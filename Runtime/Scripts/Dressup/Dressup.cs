@@ -3,9 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.XR;
-using static ZyGame.Replacement.Ex;
-using Object = UnityEngine.Object;
 
 namespace ZyGame.Replacement
 {

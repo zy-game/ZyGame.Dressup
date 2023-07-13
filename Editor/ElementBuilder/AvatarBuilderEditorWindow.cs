@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections;
+﻿using NUnit.Framework.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEditor;
-using UnityEditor.SearchService;
-using UnityEditorInternal;
 using UnityEngine;
 using ZyGame.Replacement;
-using static UnityEditor.Progress;
 using Object = UnityEngine.Object;
 
 namespace ZyGame.Editor.Avatar
@@ -223,6 +218,7 @@ namespace ZyGame.Editor.Avatar
             GUILayout.BeginHorizontal(EditorStyles.helpBox);
 
             GUILayout.Label(itemData.icon, GUILayout.Width(100), GUILayout.Height(100));
+            GUILayout.Label(itemData.texture, GUILayout.Width(100), GUILayout.Height(100));
             GUILayout.BeginVertical();
             GUILayout.Label(itemData.fbx.name);
             GUILayout.Label(AssetDatabase.GetAssetPath(itemData.fbx));
@@ -231,6 +227,7 @@ namespace ZyGame.Editor.Avatar
             {
                 itemData.element = t;
                 itemData.isNormal = AvatarElementConfig.instance.normal.Contains(t);
+                ChargeElementTexture(itemData);
                 AvatarElementConfig.Save();
             }
             string g = groups[EditorGUILayout.Popup("Group", Array.IndexOf(groups, itemData.group), groups)];
@@ -241,66 +238,18 @@ namespace ZyGame.Editor.Avatar
                 OnEnable();
                 this.Repaint();
             }
-            NodeChild[] nodeChilds = AvatarElementConfig.instance.GetChildren(itemData.element);
-            if (nodeChilds is not null && nodeChilds.Length is not 0)
+            if (itemData.childs is not null && itemData.childs.Count is not 0)
             {
-                if (itemData.childs is null)
+                GUILayout.BeginVertical(EditorStyles.helpBox);
+                GUI.enabled = false;
+                GUILayout.Label("Childs");
+                for (int i = 0; i < itemData.childs.Count; i++)
                 {
-                    itemData.childs = new List<ElementItemData>();
+                    itemData.childs[i].group = itemData.group;
+                    ShowElementData(itemData.childs[i], true);
                 }
-                foreach (var child in nodeChilds)
-                {
-                    if (child.path is null || child.path.Count is 0)
-                    {
-                        Debug.Log("the child is not set path:" + child.element);
-                    }
-                    ElementItemData childData = itemData.childs.Find(x => x.element == child.element);
-                    if (childData is null)
-                    {
-                        childData = new ElementItemData()
-                        {
-                            isNormal = AvatarElementConfig.instance.normal.Contains(t),
-                            icon = itemData.icon,
-                            childs = new List<ElementItemData>(),
-                            element = child.element,
-                            fbx = itemData.fbx.transform.Find(child.path[0]).gameObject,
-                            group = itemData.group,
-                            version = itemData.version,
-                        };
-                        Renderer renderer = childData.fbx.GetComponent<Renderer>();
-                        childData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-                        itemData.childs.Add(childData);
-                        AvatarElementConfig.Save();
-                    }
-                }
-                if (itemData.childs is not null && itemData.childs.Count is not 0)
-                {
-                    GUILayout.BeginVertical(EditorStyles.helpBox);
-                    GUI.enabled = false;
-                    GUILayout.Label("Childs");
-                    for (int i = 0; i < itemData.childs.Count; i++)
-                    {
-                        itemData.childs[i].group = itemData.group;
-                        ShowElementData(itemData.childs[i], true);
-                    }
-                    GUI.enabled = true;
-                    GUILayout.EndVertical();
-                }
-            }
-            if (itemData.texture is null)
-            {
-                string path = AvatarElementConfig.instance.GetNodePath(itemData.element);
-                Renderer renderer = null;
-                if (path.IsNullOrEmpty() is false)
-                {
-                    renderer = itemData.fbx.transform.Find(path).GetComponent<Renderer>();
-                }
-                else
-                {
-                    renderer = itemData.fbx.GetComponentInChildren<Renderer>();
-                }
-                itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-                AvatarElementConfig.Save();
+                GUI.enabled = true;
+                GUILayout.EndVertical();
             }
 
             GUILayout.BeginHorizontal();
@@ -325,6 +274,48 @@ namespace ZyGame.Editor.Avatar
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
         }
+
+        private void ChargeElementTexture(ElementItemData itemData)
+        {
+            NodeChild[] nodeChilds = AvatarElementConfig.instance.GetChildren(itemData.element);
+            itemData.childs = new List<ElementItemData>();
+            if (nodeChilds is null || nodeChilds.Length is 0)
+            {
+                Renderer renderer = itemData.fbx.GetComponentInChildren<Renderer>();
+                itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
+
+            }
+            else
+            {
+                string path = AvatarElementConfig.instance.GetNodePath(itemData.element);
+                Renderer renderer = itemData.fbx.transform.Find(path).GetComponent<Renderer>();
+                itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
+                itemData.childs = new List<ElementItemData>();
+                foreach (var child in nodeChilds)
+                {
+                    if (child.path is null || child.path.Count is 0)
+                    {
+                        Debug.Log("the child is not set path:" + child.element);
+                        continue;
+                    }
+                    ElementItemData childData = new ElementItemData()
+                    {
+                        isNormal = AvatarElementConfig.instance.normal.Contains(child.element),
+                        icon = itemData.icon,
+                        childs = new List<ElementItemData>(),
+                        element = child.element,
+                        fbx = itemData.fbx.transform.Find(child.path[0]).gameObject,
+                        group = itemData.group,
+                        version = itemData.version,
+                    };
+                    renderer = childData.fbx.GetComponent<Renderer>();
+                    childData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
+                    itemData.childs.Add(childData);
+                }
+            }
+            AvatarElementConfig.Save();
+        }
+
         private void OnBuild(params ElementItemData[] elements)
         {
             string folder = EditorPrefs.GetString("element_output", Application.dataPath);
@@ -461,6 +452,15 @@ namespace ZyGame.Editor.Avatar
             }
             if (UnityEngine.Event.current.type is not EventType.DragPerform)
             {
+                return;
+            }
+            Debug.Log(AvatarElementConfig.instance.iconOutput);
+            if (AvatarElementConfig.instance.iconOutput == null || AvatarElementConfig.instance.iconOutput is default(Object))
+            {
+                if (EditorUtility.DisplayDialog("Error", "Not Setting Icon Output Path", "OK"))
+                {
+                    isShowSetting = true;
+                }
                 return;
             }
 
