@@ -33,7 +33,7 @@ namespace ZyGame.Dressup
             }
             if (charge.model != data?.model && dressup.IsChild(charge.element) is false)
             {
-                yield return LoadAsync<GameObject>(charge, args => SetGameObject(args, charge, true));
+                yield return LoadAsync<GameObject>(charge, args => SetGameObject(args, charge));
             }
         }
 
@@ -95,17 +95,13 @@ namespace ZyGame.Dressup
             Debug.Log("[SET CHILD OBJECT]" + string.Join(",", childs.Select(x => x.name).ToArray()));
         }
 
-        public void SetGameObject(GameObject gameObject, DressupData dressupData, bool isRoot)
+        public void SetGameObject(GameObject gameObject, DressupData dressupData)
         {
             if (this.gameObject is not null)
             {
                 return;
             }
             this.gameObject = gameObject;
-            if (isRoot is false)
-            {
-                return;
-            }
             this.gameObject.SetParent(dressup.gameObject, Vector3.zero, Vector3.zero, Vector3.one);
         }
 

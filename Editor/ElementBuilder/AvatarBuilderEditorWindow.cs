@@ -174,23 +174,24 @@ namespace ZyGame.Editor.Avatar
                 {
                     return;
                 }
-                List<object> groups = new List<object>();
+                List<ElementGroupData> groups = new List<ElementGroupData>();
                 foreach (var item in AvatarElementConfig.instance.groups)
                 {
-                    groups.Add(new
+                    groups.Add(new ElementGroupData
                     {
-                        item.name,
+                        name = item.name,
                         skelton = item.skelton.name
                     });
                 }
-                object write = new
+                InitConfig write = new InitConfig()
                 {
-                    AvatarElementConfig.instance.nodes,
-                    groups,
-                    AvatarElementConfig.instance.normals,
+                    nodes = AvatarElementConfig.instance.nodes,
+                    groups = groups,
+                    normal = AvatarElementConfig.instance.normals,
                 };
 
                 File.WriteAllText(temp + "/avatar_setting.json", JsonConvert.SerializeObject(write));
+                EditorUtility.DisplayDialog("Tips", "Export Avatar Config Completion", "Ok");
             }
 
             if (EditorGUI.EndChangeCheck())

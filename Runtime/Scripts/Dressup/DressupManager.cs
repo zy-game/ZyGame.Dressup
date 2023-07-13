@@ -15,7 +15,7 @@ namespace ZyGame.Dressup
         /// <summary>
         /// »ù´¡¹Ç÷À
         /// </summary>
-        public string skeleton;
+        public string group;
         /// <summary>
         /// »ù´¡¹Ç÷À°æ±¾ºÅ
         /// </summary>
@@ -41,6 +41,7 @@ namespace ZyGame.Dressup
         /// </summary>
         public int pid;
 
+
         [NonSerialized] public Camera camera;
         [NonSerialized] public List<Element> normals;
         [NonSerialized] public Vector3 cameraPosition;
@@ -55,11 +56,10 @@ namespace ZyGame.Dressup
     public class DressupManager : IDisposable
     {
         public int pid { get; private set; }
-
         public string user { get; private set; }
+        public string group { get; private set; }
         public string address { get; private set; }
         public Camera camera { get; private set; }
-        public string skeleton { get; private set; }
         public GameObject combine { get; private set; }
         public GameObject boneRoot { get; private set; }
         public GameObject skinRoot { get; private set; }
@@ -82,6 +82,7 @@ namespace ZyGame.Dressup
             this.options = options;
             this.pid = options.pid;
             this.user = options.userId;
+            this.group = options.group;
             this.camera = options.camera;
             this.Notify = options.Notify;
             this.nodeList = options.nodeList;
@@ -90,8 +91,13 @@ namespace ZyGame.Dressup
             this.AssetLoader = options.assetLoader;
             this.OpenFileCallback = options.OpenFileCallback;
             this.dressups = new Dictionary<Element, DressupComponent>();
-            this.skeleton = Path.GetFileNameWithoutExtension(skeleton);
-            this.AssetLoader.LoadAsync<GameObject>(options.skeleton, options.version, options.crc, LoadSkeletonCompletion);
+            ElementGroupData groupData = groupDatas.Find(x => x.name == options.group);
+            if (groupData is null)
+            {
+                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
+                return;
+            }
+            this.AssetLoader.LoadAsync<GameObject>(groupData.skelton, options.version, options.crc, LoadSkeletonCompletion);
         }
 
         private void LoadSkeletonCompletion(GameObject result)
@@ -102,8 +108,8 @@ namespace ZyGame.Dressup
             }
             gameObject = result;
             gameObject.SetParent(null, Vector3.zero, Vector3.zero, Vector3.one);
-            boneRoot = gameObject.transform.Find("DeformationSystem/root")?.gameObject;
-            skinRoot = gameObject.transform.Find("Geometry")?.gameObject;
+            boneRoot = gameObject.transform.Find("joint/root")?.gameObject;
+            skinRoot = gameObject.transform.Find("mesh")?.gameObject;
             if (this.camera is not null)
             {
                 this.camera.transform.position = options.cameraPosition;
@@ -179,7 +185,7 @@ namespace ZyGame.Dressup
                     Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.UPLOAD_AVATAR_ICON_FAIL);
                     return;
                 }
-                config.group = this.skeleton;
+                config.group = this.group;
                 config.icon = response.data.url;
                 config.md5 = response.data.md5;
                 foreach (var component in dressups.Values)
@@ -233,7 +239,7 @@ namespace ZyGame.Dressup
             try
             {
                 DressupConfig tempConfig = Newtonsoft.Json.JsonConvert.DeserializeObject<DressupConfig>(config);
-                if (tempConfig.group.IsNullOrEmpty() || tempConfig.group != skeleton)
+                if (tempConfig.group.IsNullOrEmpty() || tempConfig.group != group)
                 {
                     Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.ELEMENT_GROUP_NOT_THE_SAME);
                     return;
@@ -257,11 +263,13 @@ namespace ZyGame.Dressup
             for (int i = elements.Count - 1; i >= 0; i--)
             {
                 DressupData dressupData = elements[i];
-                if (!dressups.TryGetValue(dressupData.element, out DressupComponent component))
+                if (dressups.TryGetValue(dressupData.element, out DressupComponent component))
                 {
-                    dressups.Add(dressupData.element, component = new DressupComponent(this));
+                    component.Dispose();
+                    dressups.Remove(dressupData.element);
                 }
-
+           
+                dressups.Add(dressupData.element, component = new DressupComponent(this));
                 if (IsChild(dressupData.element))
                 {
                     Element element = GetParentElement(dressupData.element);
@@ -495,7 +503,7 @@ namespace ZyGame.Dressup
             }
             dressups.Clear();
             GameObject.DestroyImmediate(this.gameObject);
-            skeleton = string.Empty;
+            group = string.Empty;
             options = null;
         }
 
@@ -507,6 +515,10 @@ namespace ZyGame.Dressup
             }
             foreach (var item in nodeList)
             {
+                if (item.group != group)
+                {
+                    continue;
+                }
                 NodeChild nodeChild = item.childs.Find(x => x.element == element);
                 if (nodeChild is null)
                 {
@@ -525,6 +537,10 @@ namespace ZyGame.Dressup
             }
             foreach (var item in nodeList)
             {
+                if (item.group != group)
+                {
+                    continue;
+                }
                 NodeChild nodeChild = item.childs.Find(x => x.element == element);
                 if (nodeChild is null)
                 {
@@ -543,6 +559,10 @@ namespace ZyGame.Dressup
             }
             foreach (var item in nodeList)
             {
+                if (item.group != group)
+                {
+                    continue;
+                }
                 NodeChild nodeChild = item.childs.Find(x => x.element == element);
                 if (nodeChild is null)
                 {
@@ -559,7 +579,7 @@ namespace ZyGame.Dressup
             {
                 return Array.Empty<NodeChild>();
             }
-            NodeData nodeData = nodeList.Find(x => x.basic == element && x.group == skeleton);
+            NodeData nodeData = nodeList.Find(x => x.basic == element && x.group == group);
             if (nodeData is null)
             {
                 return default;

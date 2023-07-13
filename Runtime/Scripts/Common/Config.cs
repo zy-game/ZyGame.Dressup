@@ -115,6 +115,13 @@ namespace ZyGame.Dressup
         public string skelton;
     }
 
+    public class InitConfig
+    {
+        public List<NodeData> nodes;
+        public List<Element> normal;
+        public List<ElementGroupData> groups;
+    }
+
     /// <summary>
     /// AvatarÊý¾Ý
     /// </summary>
