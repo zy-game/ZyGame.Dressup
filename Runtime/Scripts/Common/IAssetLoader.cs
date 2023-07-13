@@ -1,8 +1,7 @@
 using System;
-using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace ZyGame.Replacement
+namespace ZyGame.Dressup
 {
     public interface IAssetLoader : IDisposable
     {

@@ -1,11 +1,14 @@
-﻿using NUnit.Framework.Interfaces;
+﻿using Newtonsoft.Json;
+using NUnit.Framework.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
-using ZyGame.Replacement;
+using ZyGame.Dressup;
+using static UnityEditor.Progress;
 using Object = UnityEngine.Object;
 
 namespace ZyGame.Editor.Avatar
@@ -55,36 +58,45 @@ namespace ZyGame.Editor.Avatar
                 AvatarElementConfig.instance.elements = new List<ElementItemData>();
             }
 
-            if (AvatarElementConfig.instance.tilets is null)
+            if (AvatarElementConfig.instance.groups is null)
             {
-                AvatarElementConfig.instance.tilets = new List<TiletData>();
+                AvatarElementConfig.instance.groups = new List<EditorGroupData>();
             }
 
             ResetGroupList();
-            groups = AvatarElementConfig.instance.tilets.Select(x => x.name).ToArray();
+            groups = AvatarElementConfig.instance.groups.Select(x => x.name).ToArray();
         }
 
         private void ResetGroupList()
         {
             groupList = new Dictionary<string, List<ElementItemData>>();
-            for (int i = 0; i < AvatarElementConfig.instance.tilets.Count; i++)
+            for (int i = 0; i < AvatarElementConfig.instance.groups.Count; i++)
             {
-                if (AvatarElementConfig.instance.tilets[i].name.IsNullOrEmpty())
+                if (AvatarElementConfig.instance.groups[i].name.IsNullOrEmpty())
                 {
                     continue;
                 }
-                if (groupList.ContainsKey(AvatarElementConfig.instance.tilets[i].name))
+                if (groupList.ContainsKey(AvatarElementConfig.instance.groups[i].name))
                 {
                     continue;
                 }
-                groupList.Add(AvatarElementConfig.instance.tilets[i].name, new List<ElementItemData>());
+                groupList.Add(AvatarElementConfig.instance.groups[i].name, new List<ElementItemData>());
             }
-            for (int i = 0; i < AvatarElementConfig.instance.elements.Count; i++)
+            for (int i = AvatarElementConfig.instance.elements.Count - 1; i >= 0; i--)
             {
                 ElementItemData itemData = AvatarElementConfig.instance.elements[i];
+                if (itemData.fbx is null || itemData.texture is null)
+                {
+                    AvatarElementConfig.instance.elements.Remove(itemData);
+                    continue;
+                }
+                if (itemData.icon is null)
+                {
+                    GetPreviewTexture(itemData);
+                }
                 if (itemData.group.IsNullOrEmpty())
                 {
-                    TiletData tiletData = AvatarElementConfig.instance.tilets.FirstOrDefault();
+                    EditorGroupData tiletData = AvatarElementConfig.instance.groups.FirstOrDefault();
                     itemData.group = tiletData?.name;
                 }
                 if (groupList.TryGetValue(itemData.group, out List<ElementItemData> list))
@@ -106,9 +118,9 @@ namespace ZyGame.Editor.Avatar
                 if (isShowSetting)
                 {
                     AvatarElementConfig.instance.iconOutput = null;
-                    AvatarElementConfig.instance.tilets?.Clear();
+                    AvatarElementConfig.instance.groups?.Clear();
                     AvatarElementConfig.instance.nodes?.Clear();
-                    AvatarElementConfig.instance.normal?.Clear();
+                    AvatarElementConfig.instance.normals?.Clear();
                 }
                 else
                 {
@@ -151,8 +163,8 @@ namespace ZyGame.Editor.Avatar
             EditorGUI.BeginChangeCheck();
             AvatarElementConfig.instance.iconOutput = EditorGUILayout.ObjectField("Icon Texture Output", AvatarElementConfig.instance.iconOutput, typeof(Object), false);
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("normal"), new GUIContent("Normal List"), true);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("tilets"), new GUIContent("Group List"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("normals"), new GUIContent("Normal List"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("groups"), new GUIContent("Group List"), true);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("nodes"), new GUIContent("None List"), true);
             if (GUILayout.Button("Export Json Data"))
             {
@@ -162,7 +174,23 @@ namespace ZyGame.Editor.Avatar
                 {
                     return;
                 }
-                File.WriteAllText(temp + "/nodeList.json", Newtonsoft.Json.JsonConvert.SerializeObject(AvatarElementConfig.instance.nodes));
+                List<object> groups = new List<object>();
+                foreach (var item in AvatarElementConfig.instance.groups)
+                {
+                    groups.Add(new
+                    {
+                        item.name,
+                        skelton = item.skelton.name
+                    });
+                }
+                object write = new
+                {
+                    AvatarElementConfig.instance.nodes,
+                    groups,
+                    AvatarElementConfig.instance.normals,
+                };
+
+                File.WriteAllText(temp + "/avatar_setting.json", JsonConvert.SerializeObject(write));
             }
 
             if (EditorGUI.EndChangeCheck())
@@ -215,7 +243,8 @@ namespace ZyGame.Editor.Avatar
 
         private void ShowElementData(ElementItemData itemData, bool isChild)
         {
-            GUILayout.BeginHorizontal(EditorStyles.helpBox);
+            GUILayout.BeginVertical(EditorStyles.helpBox);
+            GUILayout.BeginHorizontal();
 
             GUILayout.Label(itemData.icon, GUILayout.Width(100), GUILayout.Height(100));
             GUILayout.Label(itemData.texture, GUILayout.Width(100), GUILayout.Height(100));
@@ -226,30 +255,21 @@ namespace ZyGame.Editor.Avatar
             if (t != itemData.element)
             {
                 itemData.element = t;
-                itemData.isNormal = AvatarElementConfig.instance.normal.Contains(t);
+                itemData.isNormal = AvatarElementConfig.instance.normals.Contains(t);
                 ChargeElementTexture(itemData);
                 AvatarElementConfig.Save();
             }
-            string g = groups[EditorGUILayout.Popup("Group", Array.IndexOf(groups, itemData.group), groups)];
+            string g = groups[EditorGUILayout.Popup("Group", Mathf.Clamp(Array.IndexOf(groups, itemData.group), 0, groupList.Count), groups)];
             if (g != itemData.group)
             {
                 itemData.group = g;
+                if (itemData.childs is not null)
+                {
+                    itemData.childs.ForEach(x => x.group = g);
+                }
                 AvatarElementConfig.Save();
                 OnEnable();
                 this.Repaint();
-            }
-            if (itemData.childs is not null && itemData.childs.Count is not 0)
-            {
-                GUILayout.BeginVertical(EditorStyles.helpBox);
-                GUI.enabled = false;
-                GUILayout.Label("Childs");
-                for (int i = 0; i < itemData.childs.Count; i++)
-                {
-                    itemData.childs[i].group = itemData.group;
-                    ShowElementData(itemData.childs[i], true);
-                }
-                GUI.enabled = true;
-                GUILayout.EndVertical();
             }
 
             GUILayout.BeginHorizontal();
@@ -271,8 +291,26 @@ namespace ZyGame.Editor.Avatar
                 this.Repaint();
             }
             GUILayout.EndHorizontal();
+            if (itemData.childs is not null && itemData.childs.Count is not 0)
+            {
+                itemData.foldout = EditorGUILayout.Foldout(itemData.foldout, "Childs");
+                if (itemData.foldout)
+                {
+                    GUILayout.BeginVertical(EditorStyles.helpBox);
+                    GUI.enabled = false;
+                    for (int i = 0; i < itemData.childs.Count; i++)
+                    {
+
+                        ShowElementData(itemData.childs[i], true);
+                    }
+                    GUI.enabled = true;
+                    GUILayout.EndVertical();
+                }
+            }
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
+
+            GUILayout.EndVertical();
         }
 
         private void ChargeElementTexture(ElementItemData itemData)
@@ -300,7 +338,7 @@ namespace ZyGame.Editor.Avatar
                     }
                     ElementItemData childData = new ElementItemData()
                     {
-                        isNormal = AvatarElementConfig.instance.normal.Contains(child.element),
+                        isNormal = AvatarElementConfig.instance.normals.Contains(child.element),
                         icon = itemData.icon,
                         childs = new List<ElementItemData>(),
                         element = child.element,
@@ -324,10 +362,7 @@ namespace ZyGame.Editor.Avatar
             {
                 return;
             }
-            if (temp.Equals(folder) is false)
-            {
-                EditorPrefs.SetString("element_output", folder = temp);
-            }
+            EditorPrefs.SetString("element_output", folder = temp);
 
             foreach (var item in elements)
             {
@@ -340,7 +375,15 @@ namespace ZyGame.Editor.Avatar
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
-
+            List<GameObject> skeletons = new List<GameObject>();
+            foreach (var g in AvatarElementConfig.instance.groups)
+            {
+                if (skeletons.Contains(g.skelton))
+                {
+                    continue;
+                }
+                skeletons.Add(g.skelton);
+            }
             List<AssetBundleBuild> builds = new List<AssetBundleBuild>();
             for (int i = 0; i < elements.Length; i++)
             {
@@ -350,17 +393,34 @@ namespace ZyGame.Editor.Avatar
                     assetNames = new string[] { AssetDatabase.GetAssetPath(elements[i].fbx) }
                 });
             }
+
+            for (int i = 0; i < skeletons.Count; i++)
+            {
+                builds.Add(new AssetBundleBuild()
+                {
+                    assetBundleName = skeletons[i].name.ToLower() + ".assetbundle",
+                    assetNames = new string[] { AssetDatabase.GetAssetPath(skeletons[i]) }
+                });
+            }
+
             string bundlePath = $"{folder}/assetbundles";
             CreateDirectory(bundlePath);
             BuildPipeline.BuildAssetBundles(bundlePath, builds.ToArray(), BuildAssetBundleOptions.None, EditorUserBuildSettings.activeBuildTarget);
             Dictionary<string, List<OutData>> jsons = new Dictionary<string, List<OutData>>();
             foreach (var item in elements)
             {
+                item.version++;
+
                 if (!jsons.TryGetValue(item.group, out List<OutData> datas))
                 {
                     jsons.Add(item.group, datas = new List<OutData>());
                 }
-                datas.Add(WriteData(bundlePath, folder, item));
+                OutData parent = WriteData(bundlePath, folder, false, item);
+                if (parent is null)
+                {
+                    continue;
+                }
+                datas.Add(parent);
                 if (item.childs is null || item.childs.Count is 0)
                 {
                     continue;
@@ -368,24 +428,35 @@ namespace ZyGame.Editor.Avatar
 
                 foreach (var c in item.childs)
                 {
-                    datas.Add(WriteData(bundlePath, folder, c));
+                    OutData outData = WriteData(bundlePath, folder, true, c, parent.crc, parent.version);
+                    if (outData is null)
+                    {
+                        continue;
+                    }
+                    datas.Add(outData);
                 }
             }
-            for (int i = 0; i < elements.Length; i++)
+
+            foreach (var item in AvatarElementConfig.instance.groups)
             {
-                string bundleFilePath = $"{bundlePath}/{elements[i].fbx.name.ToLower()}.assetbundle";
-                if (File.Exists(bundleFilePath) is false)
+                OutData outData = WriteData(bundlePath, folder, false, new ElementItemData()
                 {
-                    continue;
-                }
-                string dest = $"{folder}/{elements[i].group}/bundles/{Path.GetFileName(bundleFilePath)}";
-                if (File.Exists(dest))
+                    isNormal = true,
+                    icon = item.texture,
+                    childs = new List<ElementItemData>(),
+                    element = Element.None,
+                    group = item.name,
+                    fbx = item.skelton,
+                    texture = null,
+                    version = 0,
+                });
+                if (jsons.TryGetValue(item.name, out List<OutData> list))
                 {
-                    File.Delete(dest);
+                    list.Add(outData);
                 }
-                CreateDirectory(Path.GetDirectoryName(dest));
-                File.Move(bundleFilePath, dest);
             }
+
+
             foreach (var item in jsons)
             {
                 File.WriteAllText($"{folder}/{item.Key}/elements.json", Newtonsoft.Json.JsonConvert.SerializeObject(item.Value));
@@ -394,34 +465,55 @@ namespace ZyGame.Editor.Avatar
             AvatarElementConfig.Save();
         }
 
-        private OutData WriteData(string bundlePath, string folder, ElementItemData itemData)
+        private OutData WriteData(string bundlePath, string folder, bool isChild, ElementItemData itemData, uint crc = 0, uint version = 0)
         {
             string iconPath = $"{folder}/{itemData.group}/icons/{itemData.fbx.name}_icon.png";
             string elementPath = $"{folder}/{itemData.group}/element/";
+            string bundleFilePath = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
+            if (File.Exists(bundleFilePath) && isChild is false)
+            {
+                string path = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
+                BuildPipeline.GetCRCForAssetBundle(path, out crc);
+
+
+
+                string dest = $"{folder}/{itemData.group}/bundles/{Path.GetFileName(bundleFilePath)}";
+                if (File.Exists(dest))
+                {
+                    File.Delete(dest);
+                }
+                CreateDirectory(Path.GetDirectoryName(dest));
+                File.Move(bundleFilePath, dest);
+            }
+
             CreateDirectory(Path.GetDirectoryName(iconPath));
             CreateDirectory(Path.GetDirectoryName(elementPath));
+            string texturePath = string.Empty;
+            if (itemData.texture != null)
+            {
 
-            Texture2D texture2D = new Texture2D(itemData.texture.width, itemData.texture.height, TextureFormat.RGBA32, false);
-            texture2D.SetPixels(itemData.texture.GetPixels());
-            File.WriteAllBytes($"{elementPath}/{itemData.texture.name}.png", texture2D.EncodeToPNG());
+                Texture2D texture2D = new Texture2D(itemData.texture.width, itemData.texture.height, TextureFormat.RGBA32, false);
+                texture2D.SetPixels(itemData.texture.GetPixels());
+                texturePath = $"{elementPath}/{itemData.texture.name}.png";
+                File.WriteAllBytes(texturePath, texture2D.EncodeToPNG());
+            }
 
+            if (itemData.icon != null)
+            {
+                File.WriteAllBytes(iconPath, itemData.icon.EncodeToPNG());
+            }
 
-            string path = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
-            BuildPipeline.GetCRCForAssetBundle(path, out uint crc);
-            OutData outData = new OutData
+            return new OutData
             {
                 icon = $"{itemData.group}/icons/{itemData.fbx.name}_icon.png",
                 is_normal = itemData.isNormal,
                 element = (int)itemData.element,
                 group = itemData.group,
-                model = itemData.fbx.name + ".assetbundle",
-                texture = itemData.texture.name,
-                version = ++itemData.version,
+                model = isChild ? string.Empty : $"{itemData.group}/bundles/{itemData.fbx.name}.assetbundle",
+                texture = itemData.texture == null ? string.Empty : $"{itemData.group}/element/{itemData.texture.name}.png",
+                version = version == 0 ? itemData.version : version,
                 crc = crc
             };
-            byte[] bytes = itemData.icon.EncodeToPNG();
-            File.WriteAllBytes(iconPath, bytes);
-            return outData;
         }
 
         private void CreateDirectory(string path)
@@ -432,13 +524,15 @@ namespace ZyGame.Editor.Avatar
             }
         }
 
+
+
         private void CheckMouseDragEvent(Rect rect)
         {
             if (Rect.zero.Equals(rect) is not true && rect.Contains(UnityEngine.Event.current.mousePosition) is not true)
             {
                 return;
             }
-            if (UnityEngine.Event.current.type is not EventType.DragUpdated)
+            if (Event.current.type is not EventType.DragUpdated)
             {
                 return;
             }
@@ -446,11 +540,11 @@ namespace ZyGame.Editor.Avatar
         }
         private void CheckMouseDragdropEvent(Rect rect)
         {
-            if (rect.Contains(UnityEngine.Event.current.mousePosition) is not true)
+            if (rect.Contains(Event.current.mousePosition) is not true)
             {
                 return;
             }
-            if (UnityEngine.Event.current.type is not EventType.DragPerform)
+            if (Event.current.type is not EventType.DragPerform)
             {
                 return;
             }

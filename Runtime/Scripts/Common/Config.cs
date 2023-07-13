@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
-namespace ZyGame.Replacement
+namespace ZyGame.Dressup
 {
     /// <summary>
     /// 部位枚举
@@ -94,7 +95,9 @@ namespace ZyGame.Replacement
     [Serializable]
     public class NodeData
     {
-        public Element element;
+        public Element basic;
+        public string path;
+        public string group;
         public List<NodeChild> childs;
     }
 
@@ -105,8 +108,12 @@ namespace ZyGame.Replacement
         public List<string> path;
     }
 
-
-
+    [Serializable]
+    public class ElementGroupData
+    {
+        public string name;
+        public string skelton;
+    }
 
     /// <summary>
     /// Avatar数据

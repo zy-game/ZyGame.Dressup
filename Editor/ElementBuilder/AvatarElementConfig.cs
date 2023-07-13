@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using ZyGame.Replacement;
+using ZyGame.Dressup;
 using Object = UnityEngine.Object;
 
 namespace ZyGame.Editor.Avatar
@@ -15,8 +15,8 @@ namespace ZyGame.Editor.Avatar
     {
         public Object iconOutput;
         public List<NodeData> nodes;
-        public List<TiletData> tilets;
-        public List<Element> normal;
+        public List<Element> normals;
+        public List<EditorGroupData> groups;
         public List<ElementItemData> elements;
 
         public NodeChild[] GetChildren(Element element)
@@ -48,7 +48,15 @@ namespace ZyGame.Editor.Avatar
         }
     }
 
-    public class OutData
+    [Serializable]
+    public class EditorGroupData
+    {
+        public string name;
+        public GameObject skelton;
+        public Texture2D texture;
+    }
+
+    class OutData
     {
         public int element;
         public bool is_normal;
@@ -58,28 +66,6 @@ namespace ZyGame.Editor.Avatar
         public string model;
         public uint version;
         public uint crc;
-    }
-
-    [Serializable]
-    public class TiletData
-    {
-        public string name;
-        public GameObject skelton;
-    }
-
-    [Serializable]
-    public class NodeData
-    {
-        public Element basic;
-        public string path;
-        public List<NodeChild> childs;
-    }
-
-    [Serializable]
-    public class NodeChild
-    {
-        public Element element;
-        public List<string> path;
     }
 
     [Serializable]
@@ -94,12 +80,14 @@ namespace ZyGame.Editor.Avatar
         public Texture2D texture;
         public List<ElementItemData> childs;
 
+        [NonSerialized] public bool foldout;
+
         public ElementItemData()
         {
 
         }
 
-        public OutData GetOutData(string outpath)
+        internal OutData GetOutData(string outpath)
         {
             return new OutData
             {

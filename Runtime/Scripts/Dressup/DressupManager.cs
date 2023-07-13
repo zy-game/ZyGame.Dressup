@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace ZyGame.Replacement
+namespace ZyGame.Dressup
 {
     public class DressupOptions
     {
@@ -42,15 +42,17 @@ namespace ZyGame.Replacement
         public int pid;
 
         [NonSerialized] public Camera camera;
-        [NonSerialized] public IAssetLoader assetLoader;
-        [NonSerialized] public List<NodeData> nodeList;
-        [NonSerialized] public Action<string, object> Notify;
-        [NonSerialized] public Action OpenFileCallback;
+        [NonSerialized] public List<Element> normals;
         [NonSerialized] public Vector3 cameraPosition;
+        [NonSerialized] public List<NodeData> nodeList;
+        [NonSerialized] public Action OpenFileCallback;
+        [NonSerialized] public IAssetLoader assetLoader;
+        [NonSerialized] public Action<string, object> Notify;
+        [NonSerialized] public List<ElementGroupData> groupDatas;
 
 
     }
-    public class Dressup : IDisposable
+    public class DressupManager : IDisposable
     {
         public int pid { get; private set; }
 
@@ -64,6 +66,8 @@ namespace ZyGame.Replacement
         public GameObject gameObject { get; private set; }
         public DressupOptions options { get; private set; }
         public List<NodeData> nodeList { get; private set; }
+        public List<Element> normalList { get; private set; }
+        public List<ElementGroupData> groupDatas { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
         public Action<string, object> Notify { get; private set; }
         public Dictionary<Element, DressupComponent> dressups { get; }
@@ -73,7 +77,7 @@ namespace ZyGame.Replacement
         private const int COMBINE_TEXTURE_MAX = 2048;
         private const string COMBINE_DIFFUSE_TEXTURE = "_MainTex";
 
-        public Dressup(DressupOptions options)
+        public DressupManager(DressupOptions options)
         {
             this.options = options;
             this.pid = options.pid;
@@ -81,6 +85,8 @@ namespace ZyGame.Replacement
             this.camera = options.camera;
             this.Notify = options.Notify;
             this.nodeList = options.nodeList;
+            this.normalList = options.normals;
+            this.groupDatas = options.groupDatas;
             this.AssetLoader = options.assetLoader;
             this.OpenFileCallback = options.OpenFileCallback;
             this.dressups = new Dictionary<Element, DressupComponent>();
@@ -98,7 +104,10 @@ namespace ZyGame.Replacement
             gameObject.SetParent(null, Vector3.zero, Vector3.zero, Vector3.one);
             boneRoot = gameObject.transform.Find("DeformationSystem/root")?.gameObject;
             skinRoot = gameObject.transform.Find("Geometry")?.gameObject;
-            this.camera.transform.position = options.cameraPosition;
+            if (this.camera is not null)
+            {
+                this.camera.transform.position = options.cameraPosition;
+            }
             Notify(EventNames.INITIALIZED_COMPLATED_EVENT, string.Empty);
         }
         /// <summary>
@@ -145,10 +154,10 @@ namespace ZyGame.Replacement
         {
             if (!dressups.TryGetValue(element, out DressupComponent component))
             {
-                camera.ToViewCenter(gameObject);
+                camera?.ToViewCenter(gameObject);
                 return;
             }
-            camera.ToViewCenter(component.gameObject);
+            camera?.ToViewCenter(component.gameObject);
         }
 
         /// <summary>
@@ -272,26 +281,10 @@ namespace ZyGame.Replacement
                 }
                 else
                 {
-                    component.Dressup(dressupData).StartCoroutine(() => elements.Remove(dressupData));
+                    component.DressupTextureAndGameObject(dressupData).StartCoroutine(() => elements.Remove(dressupData));
                 }
             }
             yield return new WaitUntil(() => elements.Count == 0);
-            Notify(EventNames.SET_ELEMENT_DATA_COMPLATED, default(object));
-        }
-
-
-
-        /// <summary>
-        /// 设置部件模型
-        /// </summary>
-        /// <param name="elementData">部位数据</param>
-        public IEnumerator SetElementData(DressupData element)
-        {
-            if (!dressups.TryGetValue(element.element, out DressupComponent component))
-            {
-                dressups.Add(element.element, component = new DressupComponent(this));
-            }
-            yield return component.Dressup(element);
             Notify(EventNames.SET_ELEMENT_DATA_COMPLATED, default(object));
         }
 
@@ -305,26 +298,15 @@ namespace ZyGame.Replacement
             {
                 GameObject.DestroyImmediate(combine);
             }
-
             SkinnedMeshRenderer[] skinnedMeshRenderers = gameObject.GetComponentsInChildren<SkinnedMeshRenderer>();
-            //foreach (var mesh in dressups.Values)
-            //{
-            //    meshes.AddRange(mesh.GetSkinnedMeshRenderers());
-            //}
-            // Fetch all bones of the skeleton
             List<Transform> transforms = new List<Transform>();
             transforms.AddRange(boneRoot.GetComponentsInChildren<Transform>(true));
-
             List<Material> materials = new List<Material>();//the list of materials
             List<CombineInstance> combineInstances = new List<CombineInstance>();//the list of meshes
             List<Transform> bones = new List<Transform>();//the list of bones
-
-            // Below informations only are used for merge materilas(bool combine = true)
             List<Vector2[]> oldUV = null;
             Material newMaterial = null;
             Texture2D newDiffuseTex = null;
-
-            // Collect information from meshes
             for (int i = 0; i < skinnedMeshRenderers.Length; i++)
             {
                 SkinnedMeshRenderer smr = skinnedMeshRenderers[i];
@@ -358,18 +340,14 @@ namespace ZyGame.Replacement
             }
             // merge materials
             oldUV = new List<Vector2[]>();
-            // merge the texture
             List<Texture2D> Textures = new List<Texture2D>();
             for (int i = 0; i < materials.Count; i++)
             {
                 Textures.Add(materials[i].GetTexture(COMBINE_DIFFUSE_TEXTURE) as Texture2D);
             }
-
             newDiffuseTex = new Texture2D(COMBINE_TEXTURE_MAX, COMBINE_TEXTURE_MAX, TextureFormat.RGBA32, true);
             Rect[] uvs = newDiffuseTex.PackTextures(Textures.ToArray(), 0);
             newMaterial.mainTexture = newDiffuseTex;
-
-            // reset uv
             Vector2[] uva, uvb;
             for (int j = 0; j < combineInstances.Count; j++)
             {
@@ -398,31 +376,7 @@ namespace ZyGame.Replacement
             {
                 item.SetActiveState(false);
             }
-            //SkinnedMeshCombiner skinnedMeshCombiner = new SkinnedMeshCombiner();
-            //skinnedMeshCombiner.allInOneParams.materialToUse = new Material(Shader.Find("UniversalRenderPipeline/Lit"));
-            //skinnedMeshCombiner.CombineMeshes(SkinnedMeshCombiner.MergeMethod.AllInOne, gameObject);
-            //combine = skinnedMeshCombiner.resultMergeGameObject.SetParent(skinRoot, Vector3.zero, Vector3.zero, Vector3.one);
-            //Debug.Log("合并耗时 : " + (Time.realtimeSinceStartup - startTime) * 1000 + " ms");
         }
-
-        /// <summary>
-        /// 获取最接近输入值的2的N次方的数，最大不会超过1024，例如输入320会得到512
-        /// </summary>
-        public int get2Pow(int into)
-        {
-            int outo = 1;
-            for (int i = 0; i < 10; i++)
-            {
-                outo *= 2;
-                if (outo > into)
-                {
-                    break;
-                }
-            }
-
-            return outo;
-        }
-
 
         /// <summary>
         /// 上传部件资源
@@ -594,7 +548,7 @@ namespace ZyGame.Replacement
                 {
                     continue;
                 }
-                return item.element;
+                return item.basic;
             }
             return Element.None;
         }
@@ -605,7 +559,7 @@ namespace ZyGame.Replacement
             {
                 return Array.Empty<NodeChild>();
             }
-            NodeData nodeData = nodeList.Find(x => x.element == element);
+            NodeData nodeData = nodeList.Find(x => x.basic == element && x.group == skeleton);
             if (nodeData is null)
             {
                 return default;

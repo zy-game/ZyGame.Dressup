@@ -5,21 +5,21 @@ using System.Linq;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace ZyGame.Replacement
+namespace ZyGame.Dressup
 {
     public class DressupComponent : IDisposable
     {
-        public Dressup dressup { get; private set; }
+        public DressupManager dressup { get; private set; }
         public DressupData data { get; set; }
         public GameObject gameObject { get; private set; }
         public GameObject[] childs { get; private set; }
 
-        public DressupComponent(Dressup dressup)
+        public DressupComponent(DressupManager dressup)
         {
             this.dressup = dressup;
         }
 
-        public IEnumerator Dressup(DressupData charge)
+        public IEnumerator DressupTextureAndGameObject(DressupData charge)
         {
             yield return DressupGameObject(charge);
             yield return DressupTexture(charge);
