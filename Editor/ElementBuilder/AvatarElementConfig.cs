@@ -172,7 +172,12 @@ namespace ZyGame.Editor.Avatar
             }
             string fileName = Path.GetFileName(options.filepath);
             T instance = UnityEditorInternal.InternalEditorUtility.LoadSerializedFileAndForget(options.filepath).FirstOrDefault() as T;
-            return instance;
+            if (instance is null)
+            {
+                _instance = instance = Activator.CreateInstance<T>();
+                Save();
+            }
+            return _instance = instance;
         }
 
         public static void Save()

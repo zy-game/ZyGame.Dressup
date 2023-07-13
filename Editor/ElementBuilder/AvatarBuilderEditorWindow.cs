@@ -53,7 +53,7 @@ namespace ZyGame.Editor.Avatar
         }
         private void OnEnable()
         {
-            serializedObject = new SerializedObject(AvatarElementConfig.instance);
+            serializedObject = new SerializedObject(AvatarElementConfig.Load());
 
             if (AvatarElementConfig.instance.elements is null)
             {
