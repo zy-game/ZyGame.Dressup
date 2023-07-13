@@ -33,17 +33,23 @@ namespace ZyGame.Editor.Avatar
 
         private void OnGUI()
         {
+
             if (serializedObject is null)
             {
                 OnEnable();
             }
             OnDrawingToolbarGUI();
+            pos = GUILayout.BeginScrollView(pos);
             if (isShowSetting)
             {
                 ShowAvatarOptionWindow();
-                return;
             }
-            ShowAvatarElementList();
+            else
+            {
+                ShowAvatarElementList();
+            }
+
+            GUILayout.EndScrollView();
         }
         private void OnEnable()
         {
@@ -173,7 +179,7 @@ namespace ZyGame.Editor.Avatar
         }
         private void ShowAvatarElementList()
         {
-            pos = GUILayout.BeginScrollView(pos);
+
             Rect rect = EditorGUILayout.BeginVertical();
             if (AvatarElementConfig.instance.elements is null)
             {
@@ -209,7 +215,7 @@ namespace ZyGame.Editor.Avatar
             CheckMouseDragdropEvent(rect);
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndVertical();
-            GUILayout.EndScrollView();
+
         }
 
         private void ShowElementData(ElementItemData itemData, bool isChild)
@@ -270,11 +276,14 @@ namespace ZyGame.Editor.Avatar
                 if (itemData.childs is not null && itemData.childs.Count is not 0)
                 {
                     GUILayout.BeginVertical(EditorStyles.helpBox);
+                    GUI.enabled = false;
                     GUILayout.Label("Childs");
                     for (int i = 0; i < itemData.childs.Count; i++)
                     {
+                        itemData.childs[i].group = itemData.group;
                         ShowElementData(itemData.childs[i], true);
                     }
+                    GUI.enabled = true;
                     GUILayout.EndVertical();
                 }
             }

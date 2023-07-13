@@ -331,6 +331,7 @@ namespace ZyGame.Replacement
 
     public sealed class ErrorInfo
     {
+        public const string INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON = "initializ the avatar fail,the skeleton is not find";
         public const string SHOW_IN_CAMERA_CENTER_FAIL = "show in center fail";
         public const string CLEAR_ELEMENT_FAIL = "clear element fail";
         public const string CONFIG_DATA_IS_NULL_OR_EMPTY = "the import config data is null or empty";

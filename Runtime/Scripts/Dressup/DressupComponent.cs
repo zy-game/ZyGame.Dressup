@@ -18,7 +18,6 @@ namespace ZyGame.Replacement
         public GameObject gameObject { get; private set; }
         public GameObject[] childs { get; private set; }
 
-
         public DressupComponent(Dressup dressup)
         {
             this.dressup = dressup;
@@ -112,6 +111,23 @@ namespace ZyGame.Replacement
                 return;
             }
             this.gameObject.SetParent(dressup.gameObject, Vector3.zero, Vector3.zero, Vector3.one);
+        }
+
+        public SkinnedMeshRenderer[] GetSkinnedMeshRenderers()
+        {
+            List<SkinnedMeshRenderer> skinneds = new List<SkinnedMeshRenderer>();
+            if (this.childs is not null && this.childs.Length > 0)
+            {
+                for (int i = 0; i < this.childs.Length; i++)
+                {
+                    skinneds.Add(this.childs[i].GetComponent<SkinnedMeshRenderer>());
+                }
+            }
+            if (gameObject is not null)
+            {
+                skinneds.AddRange(this.gameObject.GetComponentsInChildren<SkinnedMeshRenderer>());
+            }
+            return skinneds.ToArray();
         }
 
         public void SetActiveState(bool state)

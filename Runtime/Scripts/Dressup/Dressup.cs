@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.XR;
 using static ZyGame.Replacement.Ex;
 using Object = UnityEngine.Object;
 
@@ -50,6 +51,7 @@ namespace ZyGame.Replacement
         [NonSerialized] public Action OpenFileCallback;
         [NonSerialized] public Vector3 cameraPosition;
 
+
     }
     public class Dressup : IDisposable
     {
@@ -59,15 +61,20 @@ namespace ZyGame.Replacement
         public string address { get; private set; }
         public Camera camera { get; private set; }
         public string skeleton { get; private set; }
+        public GameObject combine { get; private set; }
+        public GameObject boneRoot { get; private set; }
+        public GameObject skinRoot { get; private set; }
         public GameObject gameObject { get; private set; }
         public DressupOptions options { get; private set; }
         public List<NodeData> nodeList { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
         public Action<string, object> Notify { get; private set; }
         public Dictionary<Element, DressupComponent> dressups { get; }
-
         public Action OpenFileCallback { get; private set; }
         public Action<byte[]> LoadFileCompeltion { get; private set; }
+
+        private const int COMBINE_TEXTURE_MAX = 2048;
+        private const string COMBINE_DIFFUSE_TEXTURE = "_MainTex";
 
         public Dressup(DressupOptions options)
         {
@@ -86,9 +93,16 @@ namespace ZyGame.Replacement
 
         private void LoadSkeletonCompletion(GameObject result)
         {
+            if (result is null)
+            {
+                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
+            }
             gameObject = result;
             gameObject.SetParent(null, Vector3.zero, Vector3.zero, Vector3.one);
+            boneRoot = gameObject.transform.Find("DeformationSystem/root")?.gameObject;
+            skinRoot = gameObject.transform.Find("Geometry")?.gameObject;
             this.camera.transform.position = options.cameraPosition;
+            Notify(EventNames.INITIALIZED_COMPLATED_EVENT, string.Empty);
         }
         /// <summary>
         /// 清理部件
@@ -110,7 +124,20 @@ namespace ZyGame.Replacement
             {
                 return;
             }
+            NodeChild[] children = GetChildList(element);
+            if (children is not null && children.Length is not 0)
+            {
+                foreach (var item in children)
+                {
+                    if (dressups.TryGetValue(item.element, out DressupComponent childComponent))
+                    {
+                        childComponent.Dispose();
+                        dressups.Remove(item.element);
+                    }
+                }
+            }
             component.Dispose();
+            dressups.Remove(element);
             Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
         }
 
@@ -276,8 +303,129 @@ namespace ZyGame.Replacement
         /// </summary>
         public void Combine()
         {
+            float startTime = Time.realtimeSinceStartup;
+            if (combine is not null)
+            {
+                GameObject.DestroyImmediate(combine);
+            }
 
+            SkinnedMeshRenderer[] skinnedMeshRenderers = gameObject.GetComponentsInChildren<SkinnedMeshRenderer>();
+            //foreach (var mesh in dressups.Values)
+            //{
+            //    meshes.AddRange(mesh.GetSkinnedMeshRenderers());
+            //}
+            // Fetch all bones of the skeleton
+            List<Transform> transforms = new List<Transform>();
+            transforms.AddRange(boneRoot.GetComponentsInChildren<Transform>(true));
+
+            List<Material> materials = new List<Material>();//the list of materials
+            List<CombineInstance> combineInstances = new List<CombineInstance>();//the list of meshes
+            List<Transform> bones = new List<Transform>();//the list of bones
+
+            // Below informations only are used for merge materilas(bool combine = true)
+            List<Vector2[]> oldUV = null;
+            Material newMaterial = null;
+            Texture2D newDiffuseTex = null;
+
+            // Collect information from meshes
+            for (int i = 0; i < skinnedMeshRenderers.Length; i++)
+            {
+                SkinnedMeshRenderer smr = skinnedMeshRenderers[i];
+                if (newMaterial is null)
+                {
+                    newMaterial = new Material(smr.sharedMaterial.shader);
+                    newMaterial.name = "Combine Mesh Material";
+                }
+                materials.AddRange(smr.materials); // Collect materials
+                                                   // Collect meshes
+                for (int sub = 0; sub < smr.sharedMesh.subMeshCount; sub++)
+                {
+                    CombineInstance ci = new CombineInstance();
+                    ci.mesh = smr.sharedMesh;
+                    ci.subMeshIndex = sub;
+                    combineInstances.Add(ci);
+                }
+                // Collect bones
+                for (int j = 0; j < smr.bones.Length; j++)
+                {
+                    int tBase = 0;
+                    for (tBase = 0; tBase < transforms.Count; tBase++)
+                    {
+                        if (smr.bones[j].name.Equals(transforms[tBase].name))
+                        {
+                            bones.Add(transforms[tBase]);
+                            break;
+                        }
+                    }
+                }
+            }
+            // merge materials
+            oldUV = new List<Vector2[]>();
+            // merge the texture
+            List<Texture2D> Textures = new List<Texture2D>();
+            for (int i = 0; i < materials.Count; i++)
+            {
+                Textures.Add(materials[i].GetTexture(COMBINE_DIFFUSE_TEXTURE) as Texture2D);
+            }
+
+            newDiffuseTex = new Texture2D(COMBINE_TEXTURE_MAX, COMBINE_TEXTURE_MAX, TextureFormat.RGBA32, true);
+            Rect[] uvs = newDiffuseTex.PackTextures(Textures.ToArray(), 0);
+            newMaterial.mainTexture = newDiffuseTex;
+
+            // reset uv
+            Vector2[] uva, uvb;
+            for (int j = 0; j < combineInstances.Count; j++)
+            {
+                uva = (Vector2[])(combineInstances[j].mesh.uv);
+                uvb = new Vector2[uva.Length];
+                for (int k = 0; k < uva.Length; k++)
+                {
+                    uvb[k] = new Vector2((uva[k].x * uvs[j].width) + uvs[j].x, (uva[k].y * uvs[j].height) + uvs[j].y);
+                }
+                oldUV.Add(combineInstances[j].mesh.uv);
+                combineInstances[j].mesh.uv = uvb;
+            }
+            combine = new GameObject("Combine Mesh").SetParent(skinRoot, Vector3.zero, Vector3.zero, Vector3.one);
+            SkinnedMeshRenderer r = combine.AddComponent<SkinnedMeshRenderer>();
+            r.sharedMesh = new Mesh();
+            r.sharedMesh.name = "Combine Mesh Renderer";
+            r.sharedMesh.CombineMeshes(combineInstances.ToArray(), true, false);// Combine meshes
+            r.bones = bones.ToArray();// Use new bones
+            r.material = newMaterial;
+            r.rootBone = boneRoot.transform;
+            for (int i = 0; i < combineInstances.Count; i++)
+            {
+                combineInstances[i].mesh.uv = oldUV[i];
+            }
+            foreach (var item in dressups.Values)
+            {
+                item.SetActiveState(false);
+            }
+            //SkinnedMeshCombiner skinnedMeshCombiner = new SkinnedMeshCombiner();
+            //skinnedMeshCombiner.allInOneParams.materialToUse = new Material(Shader.Find("UniversalRenderPipeline/Lit"));
+            //skinnedMeshCombiner.CombineMeshes(SkinnedMeshCombiner.MergeMethod.AllInOne, gameObject);
+            //combine = skinnedMeshCombiner.resultMergeGameObject.SetParent(skinRoot, Vector3.zero, Vector3.zero, Vector3.one);
+            //Debug.Log("合并耗时 : " + (Time.realtimeSinceStartup - startTime) * 1000 + " ms");
         }
+
+        /// <summary>
+        /// 获取最接近输入值的2的N次方的数，最大不会超过1024，例如输入320会得到512
+        /// </summary>
+        public int get2Pow(int into)
+        {
+            int outo = 1;
+            for (int i = 0; i < 10; i++)
+            {
+                outo *= 2;
+                if (outo > into)
+                {
+                    break;
+                }
+            }
+
+            return outo;
+        }
+
 
         /// <summary>
         /// 上传部件资源
@@ -452,6 +600,20 @@ namespace ZyGame.Replacement
                 return item.element;
             }
             return Element.None;
+        }
+
+        public NodeChild[] GetChildList(Element element)
+        {
+            if (nodeList is null || nodeList.Count is 0)
+            {
+                return Array.Empty<NodeChild>();
+            }
+            NodeData nodeData = nodeList.Find(x => x.element == element);
+            if (nodeData is null)
+            {
+                return default;
+            }
+            return nodeData.childs.ToArray();
         }
     }
 }
