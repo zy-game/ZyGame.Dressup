@@ -362,7 +362,7 @@ namespace ZyGame.Editor.Avatar
 
                 builds.Add(new AssetBundleBuild()
                 {
-                    assetBundleName = elements[i].fbx.name.ToLower() + ".assetbundle",
+                    assetBundleName = $"{elements[i].group}_{elements[i].element}_{elements[i].fbx.name.ToLower()}.assetbundle",
                     assetNames = new string[] { AssetDatabase.GetAssetPath(elements[i].fbx) }
                 });
             }
@@ -371,7 +371,7 @@ namespace ZyGame.Editor.Avatar
             {
                 builds.Add(new AssetBundleBuild()
                 {
-                    assetBundleName = skeletons[i].name.ToLower() + ".assetbundle",
+                    assetBundleName = $"{skeletons[i].name.ToLower()}.assetbundle",
                     assetNames = new string[] { AssetDatabase.GetAssetPath(skeletons[i]) }
                 });
             }
@@ -428,13 +428,13 @@ namespace ZyGame.Editor.Avatar
 
         private OutData WriteData(string bundlePath, string folder, ElementItemData itemData, uint crc = 0, uint version = 0)
         {
-            string iconPath = $"{folder}/{itemData.group}/icons/{itemData.fbx.name}_icon.png";
+            string iconPath = $"{folder}/{itemData.group}/icons/{itemData.group}_{itemData.element}_{itemData.fbx.name}_icon.png";
             string elementPath = $"{folder}/{itemData.group}/element/";
-            string bundleFilePath = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
+            string bundleFilePath = $"{bundlePath}/{itemData.group}_{itemData.element}_{itemData.fbx.name.ToLower()}.assetbundle";
             //todo 移动资源包
             if (File.Exists(bundleFilePath))
             {
-                string path = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
+                string path = $"{bundlePath}/{itemData.group}_{itemData.element}_{itemData.fbx.name.ToLower()}.assetbundle";
                 BuildPipeline.GetCRCForAssetBundle(path, out crc);
                 string dest = $"{folder}/{itemData.group}/bundles/{Path.GetFileName(bundleFilePath)}";
                 if (File.Exists(dest))
@@ -454,7 +454,7 @@ namespace ZyGame.Editor.Avatar
             {
                 Texture2D texture2D = new Texture2D(itemData.texture.width, itemData.texture.height, TextureFormat.RGBA32, false);
                 texture2D.SetPixels(itemData.texture.GetPixels());
-                texturePath = $"{elementPath}/{itemData.texture.name}.png";
+                texturePath = $"{elementPath}/{itemData.group}_{itemData.element}_{itemData.texture.name}.png";
                 File.WriteAllBytes(texturePath, texture2D.EncodeToPNG());
             }
 
@@ -466,12 +466,12 @@ namespace ZyGame.Editor.Avatar
 
             return new OutData
             {
-                icon = $"{itemData.group}/icons/{itemData.fbx.name}_icon.png",
+                icon = $"{itemData.group}/icons/{itemData.group}_{itemData.element}_{itemData.fbx.name}_icon.png",
                 is_normal = itemData.isNormal,
                 element = (int)itemData.element,
                 group = itemData.group,
-                model = $"{itemData.group}/bundles/{itemData.fbx.name}.assetbundle",
-                texture = itemData.texture == null ? string.Empty : $"{itemData.group}/element/{itemData.texture.name}.png",
+                model = $"{itemData.group}/bundles/{itemData.group}_{itemData.element}_{itemData.fbx.name}.assetbundle",
+                texture = itemData.texture == null ? string.Empty : $"{itemData.group}/element/{itemData.group}_{itemData.element}_{itemData.texture.name}.png",
                 version = version == 0 ? itemData.version : version,
                 crc = crc
             };
@@ -630,7 +630,7 @@ namespace ZyGame.Editor.Avatar
                     m_PreviewRenderUtility.EndPreview();
                     Texture2D texture = m_PreviewRenderUtility.camera.targetTexture.ReadTexture2D(); //(Texture2D)m_PreviewRenderUtility.EndPreview();
                     m_PreviewRenderUtility.Cleanup();
-                    string iconPath = AssetDatabase.GetAssetPath(AvatarElementConfig.instance.iconOutput) + "/" + element.fbx.name + "_icon.png";
+                    string iconPath = AssetDatabase.GetAssetPath(AvatarElementConfig.instance.iconOutput) + $"/{element.fbx.name}_icon.png";
                     File.WriteAllBytes(iconPath, texture.EncodeToPNG());
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
