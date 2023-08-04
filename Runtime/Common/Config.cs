@@ -5,212 +5,176 @@ using UnityEngine;
 namespace ZyGame.Dressup
 {
     /// <summary>
-    /// ²¿Î»Ã¶¾Ù
+    /// éƒ¨ä½æšä¸¾
     /// </summary>
     public enum Element
     {
         None = 0,
 
-        //===============Í·²¿============
+        //===============å¤´éƒ¨============
         /// <summary>
-        /// Í·²¿
+        /// å¤´éƒ¨
         /// </summary>
         Head = 19,
+
         /// <summary>
-        /// Èùºì
+        /// è…®çº¢
         /// </summary>
         Blush = 1,
+
         /// <summary>
-        /// ÑÛÖé
+        /// çœ¼ç 
         /// </summary>
         Pupli = 2,
+
         /// <summary>
-        /// È¸°ß
+        /// é›€æ–‘
         /// </summary>
         Freckles = 3,
-        //===============Í·²¿============
+
+        //===============å¤´éƒ¨============
         Eyebrow = 20,
+
         /// <summary>
-        /// ¶îÍ·
+        /// é¢å¤´
         /// </summary>
         Forehead = 7,
+
         /// <summary>
-        /// Í··¢
+        /// å¤´å‘
         /// </summary>
         Hair = 5,
+
         /// <summary>
-        /// ºú×Ó
+        /// èƒ¡å­
         /// </summary>
         Beard = 6,
+
         /// <summary>
-        /// ÑÛ¾¦Åä¼ş
+        /// çœ¼ç›é…ä»¶
         /// </summary>
         EyeAccessory = 4,
+
         /// <summary>
-        /// Í·²¿Åä¼ş
+        /// å¤´éƒ¨é…ä»¶
         /// </summary>
         HeadAccessory = 8,
+
         /// <summary>
-        /// ÎÆÉí
+        /// çº¹èº«
         /// </summary>
         Tattoos = 9,
+
         /// <summary>
-        /// ¾±²¿
+        /// é¢ˆéƒ¨
         /// </summary>
         Neck = 10,
+
         /// <summary>
-        /// ÉíÌå
+        /// èº«ä½“
         /// </summary>
         Body = 11,
+
         /// <summary>
-        /// ÍâÌ×
+        /// å¤–å¥—
         /// </summary>
         Coat = 12,
+
         /// <summary>
-        /// ÓÒÊÖ
+        /// å³æ‰‹
         /// </summary>
         Handheld_R = 13,
+
         /// <summary>
-        /// ³á°ò
+        /// ç¿…è†€
         /// </summary>
         Wings = 14,
+
         /// <summary>
-        /// Î²°Í
+        /// å°¾å·´
         /// </summary>
         Tail = 15,
+
         /// <summary>
-        /// Íà×Ó/Ë¿Íà
+        /// è¢œå­/ä¸è¢œ
         /// </summary>
         Socks = 16,
+
         /// <summary>
-        /// Ğ¬×Ó
+        /// é‹å­
         /// </summary>
         Shoes = 17,
+
         /// <summary>
-        /// ÍÈ
+        /// è…¿
         /// </summary>
         Legs = 18,
     }
 
-    [Serializable]
-    public class NodeData
-    {
-        public Element basic;
-        public string path;
-        public string group;
-        public List<NodeChild> childs;
-    }
-
-    [Serializable]
-    public class NodeChild
-    {
-        public Element element;
-        public List<string> path;
-    }
-
-    [Serializable]
-    public class ElementGroupData
-    {
-        public string name;
-        public string skelton;
-    }
-
-    public class InitConfig
-    {
-        public List<NodeData> nodes;
-        public List<Element> normal;
-        public List<ElementGroupData> groups;
-    }
-
     /// <summary>
-    /// AvatarÊı¾İ
+    /// Avataræ•°æ®
     /// </summary>
-    public sealed class DressupConfig
+    public partial class DressupConfig
     {
         public string name;
         public string group;
         public string icon;
         public string md5;
         public List<DressupData> items;
-
-        public DressupConfig()
-        {
-            items = new List<DressupData>();
-        }
-
-        public void Dispose()
-        {
-            Clear();
-        }
-
-        public void AddConfig(DressupData config)
-        {
-            this.items.Add(config);
-        }
-
-        public void RemoveConfig(DressupData config)
-        {
-            this.items.Remove(config);
-        }
-
-        public void Clear()
-        {
-            items.Clear();
-        }
     }
 
     /// <summary>
-    /// ²¿Î»Êı¾İ
+    /// éƒ¨ä½æ•°æ®
     /// </summary>
     public sealed class DressupData
     {
         /// <summary>
-        /// Ê¹ÓÃ²¿¼şID
+        /// ä½¿ç”¨éƒ¨ä»¶ID
         /// </summary>
         public string id;
 
         /// <summary>
-        /// ²¿¼şÊ¹ÓÃµÄÄ£ĞÍ×ÊÔ´
+        /// éƒ¨ä»¶ä½¿ç”¨çš„æ¨¡å‹èµ„æº
         /// </summary>
         public string model;
 
         /// <summary>
-        /// ²¿Î»
+        /// éƒ¨ä½
         /// </summary>
         public Element element;
 
         /// <summary>
-        /// ²¿Î»Ê¹ÓÃµÄÌùÍ¼
+        /// éƒ¨ä½ä½¿ç”¨çš„è´´å›¾
         /// </summary>
         public string texture;
 
         /// <summary>
-        /// ²¿Î»Icon
+        /// éƒ¨ä½Icon
         /// </summary>
         public string icon;
 
         /// <summary>
-        /// ²¿Î»Ãû³Æ
+        /// éƒ¨ä½åç§°
         /// </summary>
         public string name;
 
         /// <summary>
-        /// ·Ö×éÃû
+        /// åˆ†ç»„å
         /// </summary>
         public string model_name;
 
         /// <summary>
-        /// ·¢²¼×´Ì¬
+        /// å‘å¸ƒçŠ¶æ€
         /// </summary>
         public int publish_status;
 
         /// <summary>
-        /// Ò»¸öÕûÊı°æ±¾ºÅ£¬Ôö¼ÓÕâ¸öÊı×Ö¿ÉÒÔÆÈÊ¹UnityÖØĞÂÏÂÔØ»º´æµÄ×Ê²úÀ¦°ó°ü
+        /// ä¸€ä¸ªæ•´æ•°ç‰ˆæœ¬å·ï¼Œå¢åŠ è¿™ä¸ªæ•°å­—å¯ä»¥è¿«ä½¿Unityé‡æ–°ä¸‹è½½ç¼“å­˜çš„èµ„äº§æ†ç»‘åŒ…
         /// </summary>
         public uint version;
 
         /// <summary>
-        /// Èç¹û·ÇÁã£¬Ôò´ËÊı×Ö½«ÓëÏÂÔØ×Ê²úµÄĞ£ÑéºÍ½øĞĞ±È½Ï À¦°óÊı¾İ¡£Èç¹ûCRC²»Æ¥Åä£¬½«¼ÇÂ¼Ò»¸ö´íÎó£¬²¢ÇÒ×Ê²ú ½«²»»á¼ÓÔØÀ¦°ó°ü¡£Èç¹ûÉèÖÃÎªÁã£¬½«Ìø¹ıCRC¼ì²é¡£
+        /// å¦‚æœéé›¶ï¼Œåˆ™æ­¤æ•°å­—å°†ä¸ä¸‹è½½èµ„äº§çš„æ ¡éªŒå’Œè¿›è¡Œæ¯”è¾ƒ æ†ç»‘æ•°æ®ã€‚å¦‚æœCRCä¸åŒ¹é…ï¼Œå°†è®°å½•ä¸€ä¸ªé”™è¯¯ï¼Œå¹¶ä¸”èµ„äº§ å°†ä¸ä¼šåŠ è½½æ†ç»‘åŒ…ã€‚å¦‚æœè®¾ç½®ä¸ºé›¶ï¼Œå°†è·³è¿‡CRCæ£€æŸ¥ã€‚
         /// </summary>
         public uint crc;
     }
@@ -218,127 +182,127 @@ namespace ZyGame.Dressup
     public sealed class EventNames
     {
         /// <summary>
-        /// ³õÊ¼»¯Íê³ÉÊÂ¼ş
+        /// åˆå§‹åŒ–å®Œæˆäº‹ä»¶
         /// </summary>
         public const string INITIALIZED_COMPLATED_EVENT = "INITIALIZED_COMPLATED_EVENT";
 
         /// <summary>
-        /// ÉèÖÃ²¿¼şÍê³ÉÊÂ¼ş
+        /// è®¾ç½®éƒ¨ä»¶å®Œæˆäº‹ä»¶
         /// </summary>
         public const string SET_ELEMENT_DATA_COMPLATED = "SET_ELEMENT_DATA_COMPLATED";
 
         /// <summary>
-        /// µ¼³öÅäÖÃÍê³ÉÊÂ¼ş
+        /// å¯¼å‡ºé…ç½®å®Œæˆäº‹ä»¶
         /// </summary>
         public const string EXPORT_AVATAR_CONFIG_COMPLATED = "EXPORT_AVATAR_CONFIG_COMPLATED";
 
         /// <summary>
-        /// »ñÈ¡²¿¼şÊı¾İÊÂ¼ş
+        /// è·å–éƒ¨ä»¶æ•°æ®äº‹ä»¶
         /// </summary>
         public const string GET_ELEMENT_DATA = "GET_ELEMENT_DATA";
 
         /// <summary>
-        /// ºÏ²¢AvatarÊÂ¼ş
+        /// åˆå¹¶Avataräº‹ä»¶
         /// </summary>
         public const string COMBINE_AVATAR_COMPLATED = "COMBINE_AVATAR_COMPLATED";
 
         /// <summary>
-        /// Ô¤ÀÀÍê³ÉÊÂ¼ş
+        /// é¢„è§ˆå®Œæˆäº‹ä»¶
         /// </summary>
         public const string PREVIEW_COMPLATED = "PREVIEW_COMPLATED";
 
         /// <summary>
-        /// ÇåÀí²¿¼şÊÂ¼ş
+        /// æ¸…ç†éƒ¨ä»¶äº‹ä»¶
         /// </summary>
         public const string CLEAR_ELMENT_DATA_COMPLATED = "CLEAR_ELMENT_DATA_COMPLATED";
 
         /// <summary>
-        /// µ¼ÈëÅäÖÃÍê³ÉÊÂ¼ş
+        /// å¯¼å…¥é…ç½®å®Œæˆäº‹ä»¶
         /// </summary>
         public const string IMPORT_CONFIG_COMPLATED = "IMPORT_CONFIG_COMPLATED";
 
         /// <summary>
-        /// ÏÂÔØÊ§°ÜÊÂ¼ş
+        /// ä¸‹è½½å¤±è´¥äº‹ä»¶
         /// </summary>
         public const string DOWNLOAD_ASSET_FAILUR = "DOWNLOAD_ASSET_FAILUR";
 
         /// <summary>
-        /// ¿ªÊ¼ÏÂÔØÊÂ¼ş
+        /// å¼€å§‹ä¸‹è½½äº‹ä»¶
         /// </summary>
         public const string DOWNLOAD_ASSET_START = "DOWNLOAD_ASSET_START";
 
         /// <summary>
-        /// ÏÂÔØ³É¹¦ÊÂ¼ş
+        /// ä¸‹è½½æˆåŠŸäº‹ä»¶
         /// </summary>
         public const string DOWNLOAD_ASSET_SUCCESS = "DOWNLOAD_ASSET_SUCCESS";
 
         /// <summary>
-        /// ÎÄ¼ş´ò¿ªÍê³ÉÊÂ¼ş
+        /// æ–‡ä»¶æ‰“å¼€å®Œæˆäº‹ä»¶
         /// </summary>
         public const string OPEN_FILE_COMPLATED = "OPEN_FILE_COMPLATED";
 
         /// <summary>
-        /// ²¿¼ş×ÊÔ´ÉÏ´«³É¹¦
+        /// éƒ¨ä»¶èµ„æºä¸Šä¼ æˆåŠŸ
         /// </summary>
         public const string UPLOAD_ELEMENT_ASSET_COMPLATED = "UPLOAD_ELEMENT_ASSET_COMPLATED";
 
         /// <summary>
-        /// ²¿¼ş×ÊÔ´ÉÏ´«³É¹¦
+        /// éƒ¨ä»¶èµ„æºä¸Šä¼ æˆåŠŸ
         /// </summary>
         public const string UPLOAD_ELEMENT_ASSET_FAIL = "UPLOAD_ELEMENT_ASSET_FAIL";
 
         /// <summary>
-        /// ´íÎóÍ¨Öª
+        /// é”™è¯¯é€šçŸ¥
         /// </summary>
         public const string ERROR_MESSAGE_NOTICE = "ERROR_MESSAGE_NOTICE";
 
         /// <summary>
-        /// ´´½¨Í¼²ã
+        /// åˆ›å»ºå›¾å±‚
         /// </summary>
         public const string CREATE_LAYER_COMPLETED = "CREATE_LAYER_COMPLETED";
 
         /// <summary>
-        /// ¿ªÊ¼Í¿Ñ»
+        /// å¼€å§‹æ¶‚é¸¦
         /// </summary>
         public const string GRAFFITI_INITIALIZED_COMPLETED = "GRAFFITI_INITIALIZED_COMPLETED";
 
         /// <summary>
-        /// ÌáÊ¾ÊÇ·ñ±£´æÍ¿Ñ»Êı¾İ
+        /// æç¤ºæ˜¯å¦ä¿å­˜æ¶‚é¸¦æ•°æ®
         /// </summary>
         public const string NOTICE_SAVED_GRAFFITI_DATA = "NOTICE_SAVED_GRAFFITI_DATA";
 
         /// <summary>
-        /// µ¼ÈëÍ¿Ñ»Í¼Æ¬³É¹¦
+        /// å¯¼å…¥æ¶‚é¸¦å›¾ç‰‡æˆåŠŸ
         /// </summary>
         public const string IMPORT_GRAFFITI_TEXTURE_COMPLETED = "IMPORT_GRAFFITI_TEXTURE_COMPLETED";
 
         /// <summary>
-        /// µ¼ÈëÍ¿Ñ»Êı¾İÍê³É
+        /// å¯¼å…¥æ¶‚é¸¦æ•°æ®å®Œæˆ
         /// </summary>
         public const string IMPORT_GRAFFITI_DATA_COMPLETED = "IMPORT_GRAFFITI_DATA_COMPLETED";
 
         /// <summary>
-        /// ±£´æÍ¿Ñ»Êı¾İÍê³É
+        /// ä¿å­˜æ¶‚é¸¦æ•°æ®å®Œæˆ
         /// </summary>
         public const string SAVED_GRAFFITI_DATA_COMPLETED = "SAVED_GRAFFITI_DATA_COMPLETED";
 
         /// <summary>
-        /// É¾³ıÍ¼²ãÍê³É
+        /// åˆ é™¤å›¾å±‚å®Œæˆ
         /// </summary>
         public const string DELETE_LAYER_COMPLETED = "DELETE_LAYER_COMPLETED";
 
         /// <summary>
-        /// ·¢²¼Í¿Ñ»Íê³É
+        /// å‘å¸ƒæ¶‚é¸¦å®Œæˆ
         /// </summary>
         public const string PUBLISHING_GRAFFITI_COMPLETED = "PUBLISHING_GRAFFITI_COMPLETED";
 
         /// <summary>
-        /// ·¢²¼Í¿Ñ»Íê³É
+        /// å‘å¸ƒæ¶‚é¸¦å®Œæˆ
         /// </summary>
         public const string PUBLISHING_GRAFFITI_FAIL = "PUBLISHING_GRAFFITI_FAIL";
 
         /// <summary>
-        /// Í¼²ãÅÅĞò³É¹¦
+        /// å›¾å±‚æ’åºæˆåŠŸ
         /// </summary>
         public const string SORT_LAYER_SUCCESSFLY = "SORT_LAYER_SUCCESSFLY";
     }

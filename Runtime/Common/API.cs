@@ -1,222 +1,15 @@
-Ôªøusing System.Collections.Generic;
-using System.Text;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
-using System.Collections;
 using UnityEngine.Scripting;
-using System.Security.Cryptography;
-using System.Threading;
 
 namespace ZyGame.Dressup
 {
-    public static class Ex
+    public static class API
     {
-        private static Mono mono;
-        class Mono : MonoBehaviour
-        {
-
-        }
-
-        public static Texture2D ReadTexture2D(this RenderTexture texture)
-        {
-            RenderTexture.active = texture;
-            Texture2D prev = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, false);
-            prev.name = texture.name + "_" + Guid.NewGuid().ToString();
-            prev.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
-            prev.Apply();
-            RenderTexture.active = null;
-            return prev;
-        }
-
-        private static void EnsureMonoIsCreate()
-        {
-            if (mono is not null)
-            {
-                return;
-            }
-
-            mono = new GameObject("Mono").AddComponent<Mono>();
-        }
-        public static void StartCoroutine(this IEnumerator enumerator)
-        {
-            EnsureMonoIsCreate();
-            mono.StartCoroutine(enumerator);
-        }
-
-        public static void StartCoroutine(this IEnumerator enumerator, Action action)
-        {
-            EnsureMonoIsCreate();
-            IEnumerator Waiting()
-            {
-                yield return enumerator;
-                action?.Invoke();
-            }
-            mono.StartCoroutine(Waiting());
-        }
-
-        public static void StartCoroutine<T>(this IEnumerator enumerator, Action<T> action, T args)
-        {
-            EnsureMonoIsCreate();
-            IEnumerator Waiting()
-            {
-                yield return enumerator;
-                action?.Invoke(args);
-            }
-            mono.StartCoroutine(Waiting());
-        }
-
-        public static void StartCoroutine<T, T2>(this IEnumerator enumerator, Action<T, T2> action, T args, T2 args2)
-        {
-            EnsureMonoIsCreate();
-            IEnumerator Waiting()
-            {
-                yield return enumerator;
-                action?.Invoke(args, args2);
-            }
-            mono.StartCoroutine(Waiting());
-        }
-
-        public static bool IsNullOrEmpty(this string target)
-        {
-            return string.IsNullOrEmpty(target);
-        }
-        public static string GetMd5(this byte[] bytes)
-        {
-            try
-            {
-                MD5 md5 = new MD5CryptoServiceProvider();
-                byte[] retVal = md5.ComputeHash(bytes);
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < retVal.Length; i++)
-                {
-                    sb.Append(retVal[i].ToString("x2"));
-                }
-
-                return sb.ToString();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("md5file() fail, error:" + ex.Message);
-            }
-        }
-        public static GameObject SetParent(this GameObject gameObject, GameObject parent, Vector3 position, Vector3 rotation, Vector3 scale)
-        {
-            if (gameObject == null)
-            {
-                return default;
-            }
-
-            if (parent != null)
-            {
-                gameObject.transform.SetParent(parent.transform);
-            }
-
-            gameObject.transform.localPosition = position;
-            gameObject.transform.localRotation = Quaternion.Euler(rotation);
-            gameObject.transform.localScale = scale;
-            return gameObject;
-        }
-
-        public static void ToCameraCenter(this GameObject gameObject)
-        {
-            Camera.main.ToViewCenter(gameObject);
-        }
-
-
-
-        public static void ToViewCenter(this Camera camera, GameObject gameObject)
-        {
-            if (camera == null || gameObject == null)
-            {
-                return;
-            }
-            var bound = gameObject.GetBoundingBox();
-            var center = FocusCameraOnGameObject(camera, gameObject);
-            camera.transform.localPosition = new Vector3(bound.center.x, bound.center.y, center.z);
-            camera.transform.LookAt(bound.center, Vector3.up);
-            camera.fieldOfView = 2.0f * Mathf.Atan(Mathf.Max(bound.size.y, bound.size.x) * 0.5f / Vector3.Distance(camera.transform.position, bound.center)) * Mathf.Rad2Deg;
-        }
-
-        /// <summary>
-        /// Ëé∑ÂèñÁâ©‰ΩìÂåÖÂõ¥Áõí
-        /// </summary>
-        /// <param name="obj">Áà∂Áâ©‰Ωì</param>
-        /// <returns>Áâ©‰ΩìÂåÖÂõ¥Áõí</returns>
-        public static Bounds GetBoundingBox(this GameObject obj)
-        {
-            var bounds = new Bounds();
-            if (obj != null)
-            {
-                var renders = obj.GetComponentsInChildren<Renderer>();
-                if (renders != null)
-                {
-                    var boundscenter = Vector3.zero;
-                    foreach (var item in renders)
-                    {
-                        boundscenter += item.bounds.center;
-                    }
-
-                    if (renders.Length > 0)
-                        boundscenter /= renders.Length;
-                    bounds = new Bounds(boundscenter, Vector3.zero);
-                    foreach (var item in renders)
-                    {
-                        bounds.Encapsulate(item.bounds);
-                    }
-                }
-            }
-
-            return bounds;
-        }
-
-        public static Vector3 FocusCameraOnGameObject(Camera c, GameObject go)
-        {
-            Bounds b = GetBoundingBox(go);
-            Vector3 max = b.size;
-            // Get the radius of a sphere circumscribing the bounds
-            float radius = max.magnitude / 2f;
-            // Get the horizontal FOV, since it may be the limiting of the two FOVs to properly encapsulate the objects
-            float horizontalFOV = 2f * Mathf.Atan(Mathf.Tan(c.fieldOfView * Mathf.Deg2Rad / 2f) * c.aspect) * Mathf.Rad2Deg;
-            // Use the smaller FOV as it limits what would get cut off by the frustum        
-            float fov = Mathf.Min(c.fieldOfView, horizontalFOV);
-            float dist = radius / (Mathf.Sin(fov * Mathf.Deg2Rad / 2f)) + 0.4f;
-            c.transform.localPosition = new Vector3(c.transform.localPosition.x, c.transform.localPosition.y, -dist);
-            if (c.orthographic)
-                c.orthographicSize = radius;
-
-            var pos = new Vector3(c.transform.localPosition.x, c.transform.localPosition.y, dist);
-            return pos;
-        }
-
-        public static Texture2D Screenshot(this Camera camera, int width, int height, GameObject gameObject)
-        {
-            Vector3 position = camera.transform.position;
-            Quaternion rotation = camera.transform.rotation;
-            Vector3 scale = camera.transform.localScale;
-            float view = camera.fieldOfView;
-
-            camera.ToViewCenter(gameObject);
-            RenderTexture renderTexture = new RenderTexture(width, height, 0, RenderTextureFormat.Default);
-            camera.targetTexture = renderTexture;
-            RenderTexture.active = camera.targetTexture;
-            camera.Render();
-            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-            texture.name = gameObject.name.Replace("(Clone)", "");
-            texture.Apply();
-            RenderTexture.active = null;
-            camera.targetTexture = null;
-            camera.transform.position = position;
-            camera.transform.rotation = rotation;
-            camera.transform.localScale = scale;
-            camera.fieldOfView = view;
-            return texture;
-        }
-
-
-
         public static void SetRequestHeaders(this UnityWebRequest request, Dictionary<string, List<string>> headers)
         {
             if (request == null || headers == null || headers.Count <= 0)
@@ -273,6 +66,7 @@ namespace ZyGame.Dressup
             public string audit_status;
             public string @object;
             public string url;
+
             [Preserve]
             public UploadData()
             {
@@ -284,6 +78,7 @@ namespace ZyGame.Dressup
             public int code;
             public string msg;
             public UploadData data;
+
             [Preserve]
             public UploadAssetResponse()
             {
@@ -368,6 +163,7 @@ namespace ZyGame.Dressup
                 callback(null, new Exception(request.error + "\n" + request.downloadHandler.text));
                 yield break;
             }
+
             Debug.Log(request.downloadHandler.text);
             ResponseCreateFile responseCreateFile = Newtonsoft.Json.JsonConvert.DeserializeObject<ResponseCreateFile>(request.downloadHandler.text);
             if (responseCreateFile.code != 200)
@@ -375,6 +171,7 @@ namespace ZyGame.Dressup
                 callback(null, new Exception(responseCreateFile.msg));
                 yield break;
             }
+
             if (string.IsNullOrEmpty(responseCreateFile.data.up_link))
             {
                 callback(responseCreateFile.Generic(), null);
@@ -412,23 +209,38 @@ namespace ZyGame.Dressup
                 }
             }
         }
+
         public enum PublishState : byte
         {
             None,
+
+            /// <summary>
+            /// “—∑¢≤º
+            /// </summary>
             Publish,
+
+            /// <summary>
+            /// ªÊ÷∆÷–
+            /// </summary>
             Drafts,
+
+            /// <summary>
+            /// …Û∫À÷–
+            /// </summary>
             Process,
         }
+
         public static void UploadElementData(string address, string user, int pid, string id, string name, byte[] bytes2, GameObject gameObject, DressupData dressupData, PublishState state, Action<DressupData> onCompleted)
         {
             Executed().StartCoroutine();
+
             IEnumerator Executed()
             {
                 Texture2D texture2D = Camera.main.Screenshot(256, 256, gameObject);
                 byte[] iconDataBytes = texture2D.EncodeToPNG();
                 RequestCreateFileData icon = new RequestCreateFileData(name + "_icon.png", iconDataBytes.GetMd5(), "image/png", "2", iconDataBytes.Length);
                 UploadAssetResponse iconResponse = null;
-                yield return Ex.UploadAsset(address, user, pid, icon, iconDataBytes, (response, exception) =>
+                yield return UploadAsset(address, user, pid, icon, iconDataBytes, (response, exception) =>
                 {
                     if (exception is not null)
                     {
@@ -446,7 +258,7 @@ namespace ZyGame.Dressup
 
                 RequestCreateFileData drawingData = new RequestCreateFileData(name + ".png", bytes2.GetMd5(), "image/png", "2", bytes2.Length);
 
-                yield return Ex.UploadAsset(address, user, pid, drawingData, bytes2, (response, exception) =>
+                yield return UploadAsset(address, user, pid, drawingData, bytes2, (response, exception) =>
                 {
                     if (exception != null)
                     {
@@ -468,6 +280,4 @@ namespace ZyGame.Dressup
             }
         }
     }
-
-
 }

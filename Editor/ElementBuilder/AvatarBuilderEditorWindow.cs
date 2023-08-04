@@ -31,11 +31,11 @@ namespace ZyGame.Editor.Avatar
 
         private void OnGUI()
         {
-
             if (serializedObject is null)
             {
                 OnEnable();
             }
+
             OnDrawingToolbarGUI();
             pos = GUILayout.BeginScrollView(pos);
             if (isShowSetting)
@@ -49,6 +49,7 @@ namespace ZyGame.Editor.Avatar
 
             GUILayout.EndScrollView();
         }
+
         private void OnEnable()
         {
             serializedObject = new SerializedObject(AvatarElementConfig.Load());
@@ -76,12 +77,15 @@ namespace ZyGame.Editor.Avatar
                 {
                     continue;
                 }
+
                 if (groupList.ContainsKey(AvatarElementConfig.instance.groups[i].name))
                 {
                     continue;
                 }
+
                 groupList.Add(AvatarElementConfig.instance.groups[i].name, new List<ElementItemData>());
             }
+
             for (int i = AvatarElementConfig.instance.elements.Count - 1; i >= 0; i--)
             {
                 ElementItemData itemData = AvatarElementConfig.instance.elements[i];
@@ -90,15 +94,18 @@ namespace ZyGame.Editor.Avatar
                     AvatarElementConfig.instance.elements.Remove(itemData);
                     continue;
                 }
+
                 if (itemData.icon is null)
                 {
                     GetPreviewTexture(itemData);
                 }
+
                 if (itemData.group.IsNullOrEmpty())
                 {
                     EditorGroupData tiletData = AvatarElementConfig.instance.groups.FirstOrDefault();
                     itemData.group = tiletData?.name;
                 }
+
                 if (groupList.TryGetValue(itemData.group, out List<ElementItemData> list))
                 {
                     list.Add(itemData);
@@ -108,7 +115,6 @@ namespace ZyGame.Editor.Avatar
 
         private void OnDrawingToolbarGUI()
         {
-
             GUILayout.BeginHorizontal(EditorStyles.toolbar);
             search = GUILayout.TextField(search, EditorStyles.toolbarSearchField, GUILayout.Width(200));
             GUILayout.FlexibleSpace();
@@ -126,13 +132,16 @@ namespace ZyGame.Editor.Avatar
                 {
                     AvatarElementConfig.instance.elements?.Clear();
                 }
+
                 AvatarElementConfig.Save();
                 OnEnable();
             }
+
             if (GUILayout.Button("Setting", EditorStyles.toolbarButton))
             {
                 isShowSetting = !isShowSetting;
             }
+
             if (GUILayout.Button("Build", EditorStyles.toolbarButton))
             {
                 GenericMenu menu = new GenericMenu();
@@ -143,20 +152,22 @@ namespace ZyGame.Editor.Avatar
                     {
                         groups.Add(AvatarElementConfig.instance.elements[i].group, list = new List<ElementItemData>());
                     }
-                    list.Add(AvatarElementConfig.instance.elements[i]);
 
+                    list.Add(AvatarElementConfig.instance.elements[i]);
                 }
+
                 menu.AddItem(new GUIContent("All"), false, () => { OnBuild(AvatarElementConfig.instance.elements.ToArray()); });
                 foreach (var item in groups)
                 {
                     List<ElementItemData> packageConfigs = item.Value;
                     menu.AddItem(new GUIContent("Build Group/" + item.Key), false, () => { OnBuild(packageConfigs.ToArray()); });
                 }
+
                 menu.ShowAsContext();
             }
+
             GUILayout.EndHorizontal();
         }
-
 
         private void ShowAvatarOptionWindow()
         {
@@ -174,6 +185,7 @@ namespace ZyGame.Editor.Avatar
                 {
                     return;
                 }
+
                 List<ElementGroupData> groups = new List<ElementGroupData>();
                 foreach (var item in AvatarElementConfig.instance.groups)
                 {
@@ -183,6 +195,7 @@ namespace ZyGame.Editor.Avatar
                         skelton = item.skelton.name
                     });
                 }
+
                 InitConfig write = new InitConfig()
                 {
                     nodes = AvatarElementConfig.instance.nodes,
@@ -201,9 +214,9 @@ namespace ZyGame.Editor.Avatar
                 OnEnable();
             }
         }
+
         private void ShowAvatarElementList()
         {
-
             Rect rect = EditorGUILayout.BeginVertical();
             if (AvatarElementConfig.instance.elements is null)
             {
@@ -216,6 +229,7 @@ namespace ZyGame.Editor.Avatar
                 {
                     foldouts.Add(item.Key, false);
                 }
+
                 GUILayout.BeginHorizontal(EditorStyles.helpBox);
                 foldouts[item.Key] = EditorGUILayout.Foldout(foldouts[item.Key], item.Key);
                 GUILayout.FlexibleSpace();
@@ -231,18 +245,19 @@ namespace ZyGame.Editor.Avatar
                         {
                             continue;
                         }
-                        ShowElementData(group[j], false);
+
+                        ShowElementData(group[j]);
                     }
                 }
             }
+
             CheckMouseDragEvent(rect);
             CheckMouseDragdropEvent(rect);
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndVertical();
-
         }
 
-        private void ShowElementData(ElementItemData itemData, bool isChild)
+        private void ShowElementData(ElementItemData itemData)
         {
             GUILayout.BeginVertical(EditorStyles.helpBox);
             GUILayout.BeginHorizontal();
@@ -256,18 +271,28 @@ namespace ZyGame.Editor.Avatar
             if (t != itemData.element)
             {
                 itemData.element = t;
+                if (AvatarElementConfig.instance.IsChild(t, itemData.group))
+                {
+                    string[] pathList = AvatarElementConfig.instance.GetChildPath(t, itemData.group);
+                    if (pathList is not null && pathList.Length > 0)
+                    {
+                        Transform transform = itemData.fbx.transform.Find(pathList[0]);
+                        Renderer renderer = transform?.GetComponent<Renderer>();
+                        if (renderer != null)
+                        {
+                            itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
+                        }
+                    }
+                }
+
                 itemData.isNormal = AvatarElementConfig.instance.normals.Contains(t);
-                ChargeElementTexture(itemData);
                 AvatarElementConfig.Save();
             }
+
             string g = groups[EditorGUILayout.Popup("Group", Mathf.Clamp(Array.IndexOf(groups, itemData.group), 0, groupList.Count), groups)];
             if (g != itemData.group)
             {
                 itemData.group = g;
-                if (itemData.childs is not null)
-                {
-                    itemData.childs.ForEach(x => x.group = g);
-                }
                 AvatarElementConfig.Save();
                 OnEnable();
                 this.Repaint();
@@ -277,83 +302,21 @@ namespace ZyGame.Editor.Avatar
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Delete"))
             {
-                if (isChild)
-                {
-                    itemData.childs.Remove(itemData);
-                }
-                else
-                {
-                    AvatarElementConfig.instance.elements.Remove(itemData);
-                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(itemData.icon));
-                }
-
+                AvatarElementConfig.instance.elements.Remove(itemData);
+                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(itemData.icon));
                 AvatarElementConfig.Save();
                 OnEnable();
                 this.Repaint();
             }
-            GUILayout.EndHorizontal();
-            if (itemData.childs is not null && itemData.childs.Count is not 0)
-            {
-                itemData.foldout = EditorGUILayout.Foldout(itemData.foldout, "Childs");
-                if (itemData.foldout)
-                {
-                    GUILayout.BeginVertical(EditorStyles.helpBox);
-                    GUI.enabled = false;
-                    for (int i = 0; i < itemData.childs.Count; i++)
-                    {
 
-                        ShowElementData(itemData.childs[i], true);
-                    }
-                    GUI.enabled = true;
-                    GUILayout.EndVertical();
-                }
-            }
+            GUILayout.EndHorizontal();
+
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
 
             GUILayout.EndVertical();
         }
 
-        private void ChargeElementTexture(ElementItemData itemData)
-        {
-            NodeChild[] nodeChilds = AvatarElementConfig.instance.GetChildren(itemData.element);
-            itemData.childs = new List<ElementItemData>();
-            if (nodeChilds is null || nodeChilds.Length is 0)
-            {
-                Renderer renderer = itemData.fbx.GetComponentInChildren<Renderer>();
-                itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-
-            }
-            else
-            {
-                string path = AvatarElementConfig.instance.GetNodePath(itemData.element);
-                Renderer renderer = itemData.fbx.transform.Find(path).GetComponent<Renderer>();
-                itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-                itemData.childs = new List<ElementItemData>();
-                foreach (var child in nodeChilds)
-                {
-                    if (child.path is null || child.path.Count is 0)
-                    {
-                        Debug.Log("the child is not set path:" + child.element);
-                        continue;
-                    }
-                    ElementItemData childData = new ElementItemData()
-                    {
-                        isNormal = AvatarElementConfig.instance.normals.Contains(child.element),
-                        icon = itemData.icon,
-                        childs = new List<ElementItemData>(),
-                        element = child.element,
-                        fbx = itemData.fbx.transform.Find(child.path[0]).gameObject,
-                        group = itemData.group,
-                        version = itemData.version,
-                    };
-                    renderer = childData.fbx.GetComponent<Renderer>();
-                    childData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-                    itemData.childs.Add(childData);
-                }
-            }
-            AvatarElementConfig.Save();
-        }
 
         private void OnBuild(params ElementItemData[] elements)
         {
@@ -363,6 +326,7 @@ namespace ZyGame.Editor.Avatar
             {
                 return;
             }
+
             EditorPrefs.SetString("element_output", folder = temp);
 
             foreach (var item in elements)
@@ -376,6 +340,7 @@ namespace ZyGame.Editor.Avatar
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
+
             List<GameObject> skeletons = new List<GameObject>();
             foreach (var g in AvatarElementConfig.instance.groups)
             {
@@ -383,11 +348,18 @@ namespace ZyGame.Editor.Avatar
                 {
                     continue;
                 }
+
                 skeletons.Add(g.skelton);
             }
+
             List<AssetBundleBuild> builds = new List<AssetBundleBuild>();
             for (int i = 0; i < elements.Length; i++)
             {
+                if (AvatarElementConfig.instance.IsChild(elements[i].element, elements[i].group))
+                {
+                    continue;
+                }
+
                 builds.Add(new AssetBundleBuild()
                 {
                     assetBundleName = elements[i].fbx.name.ToLower() + ".assetbundle",
@@ -416,35 +388,22 @@ namespace ZyGame.Editor.Avatar
                 {
                     jsons.Add(item.group, datas = new List<OutData>());
                 }
-                OutData parent = WriteData(bundlePath, folder, false, item);
+
+                OutData parent = WriteData(bundlePath, folder, item);
                 if (parent is null)
                 {
                     continue;
                 }
-                datas.Add(parent);
-                if (item.childs is null || item.childs.Count is 0)
-                {
-                    continue;
-                }
 
-                foreach (var c in item.childs)
-                {
-                    OutData outData = WriteData(bundlePath, folder, true, c, parent.crc, parent.version);
-                    if (outData is null)
-                    {
-                        continue;
-                    }
-                    datas.Add(outData);
-                }
+                datas.Add(parent);
             }
 
             foreach (var item in AvatarElementConfig.instance.groups)
             {
-                OutData outData = WriteData(bundlePath, folder, false, new ElementItemData()
+                OutData outData = WriteData(bundlePath, folder, new ElementItemData()
                 {
                     isNormal = true,
                     icon = item.texture,
-                    childs = new List<ElementItemData>(),
                     element = Element.None,
                     group = item.name,
                     fbx = item.skelton,
@@ -462,27 +421,27 @@ namespace ZyGame.Editor.Avatar
             {
                 File.WriteAllText($"{folder}/{item.Key}/elements.json", Newtonsoft.Json.JsonConvert.SerializeObject(item.Value));
             }
+
             Directory.Delete(bundlePath, true);
             AvatarElementConfig.Save();
         }
 
-        private OutData WriteData(string bundlePath, string folder, bool isChild, ElementItemData itemData, uint crc = 0, uint version = 0)
+        private OutData WriteData(string bundlePath, string folder, ElementItemData itemData, uint crc = 0, uint version = 0)
         {
             string iconPath = $"{folder}/{itemData.group}/icons/{itemData.fbx.name}_icon.png";
             string elementPath = $"{folder}/{itemData.group}/element/";
             string bundleFilePath = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
-            if (File.Exists(bundleFilePath) && isChild is false)
+            //todo 移动资源包
+            if (File.Exists(bundleFilePath))
             {
                 string path = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
                 BuildPipeline.GetCRCForAssetBundle(path, out crc);
-
-
-
                 string dest = $"{folder}/{itemData.group}/bundles/{Path.GetFileName(bundleFilePath)}";
                 if (File.Exists(dest))
                 {
                     File.Delete(dest);
                 }
+
                 CreateDirectory(Path.GetDirectoryName(dest));
                 File.Move(bundleFilePath, dest);
             }
@@ -490,15 +449,16 @@ namespace ZyGame.Editor.Avatar
             CreateDirectory(Path.GetDirectoryName(iconPath));
             CreateDirectory(Path.GetDirectoryName(elementPath));
             string texturePath = string.Empty;
+            //todo 移动部件图片
             if (itemData.texture != null)
             {
-
                 Texture2D texture2D = new Texture2D(itemData.texture.width, itemData.texture.height, TextureFormat.RGBA32, false);
                 texture2D.SetPixels(itemData.texture.GetPixels());
                 texturePath = $"{elementPath}/{itemData.texture.name}.png";
                 File.WriteAllBytes(texturePath, texture2D.EncodeToPNG());
             }
 
+            //todo 移动部件ICON
             if (itemData.icon != null)
             {
                 File.WriteAllBytes(iconPath, itemData.icon.EncodeToPNG());
@@ -510,7 +470,7 @@ namespace ZyGame.Editor.Avatar
                 is_normal = itemData.isNormal,
                 element = (int)itemData.element,
                 group = itemData.group,
-                model = isChild ? string.Empty : $"{itemData.group}/bundles/{itemData.fbx.name}.assetbundle",
+                model = $"{itemData.group}/bundles/{itemData.fbx.name}.assetbundle",
                 texture = itemData.texture == null ? string.Empty : $"{itemData.group}/element/{itemData.texture.name}.png",
                 version = version == 0 ? itemData.version : version,
                 crc = crc
@@ -526,29 +486,33 @@ namespace ZyGame.Editor.Avatar
         }
 
 
-
         private void CheckMouseDragEvent(Rect rect)
         {
             if (Rect.zero.Equals(rect) is not true && rect.Contains(UnityEngine.Event.current.mousePosition) is not true)
             {
                 return;
             }
+
             if (Event.current.type is not EventType.DragUpdated)
             {
                 return;
             }
+
             DragAndDrop.visualMode = DragAndDropVisualMode.Link;
         }
+
         private void CheckMouseDragdropEvent(Rect rect)
         {
             if (rect.Contains(Event.current.mousePosition) is not true)
             {
                 return;
             }
+
             if (Event.current.type is not EventType.DragPerform)
             {
                 return;
             }
+
             Debug.Log(AvatarElementConfig.instance.iconOutput);
             if (AvatarElementConfig.instance.iconOutput == null || AvatarElementConfig.instance.iconOutput is default(Object))
             {
@@ -556,6 +520,7 @@ namespace ZyGame.Editor.Avatar
                 {
                     isShowSetting = true;
                 }
+
                 return;
             }
 
@@ -565,10 +530,7 @@ namespace ZyGame.Editor.Avatar
                 {
                     continue;
                 }
-                if (AvatarElementConfig.instance.elements.Find(x => AssetDatabase.GetAssetPath(x.fbx).Equals(DragAndDrop.paths[i])) is not null)
-                {
-                    continue;
-                }
+
                 ModelImporter importer = (ModelImporter)AssetImporter.GetAtPath(DragAndDrop.paths[i]);
                 if (importer is not null)
                 {
@@ -600,7 +562,7 @@ namespace ZyGame.Editor.Avatar
                     element = Element.None,
                     fbx = AssetDatabase.LoadAssetAtPath<GameObject>(DragAndDrop.paths[i]),
                     group = groups.FirstOrDefault(),
-                    childs = new List<ElementItemData>(),
+                    // childs = new List<ElementItemData>(),
                 };
                 GetPreviewTexture(element);
                 AssetDatabase.ExtractAsset(element.fbx, AssetDatabase.GetAssetPath(element.fbx));
@@ -610,21 +572,24 @@ namespace ZyGame.Editor.Avatar
                     Debug.Log("The FBX is Not find Renderer:" + element.fbx.name + " Path:" + AssetDatabase.GetAssetPath(element.fbx));
                     continue;
                 }
+
                 foreach (var r in renderer)
                 {
                     if (r.sharedMaterial.mainTexture is null)
                     {
                         continue;
                     }
+
                     string p = AssetDatabase.GetAssetPath(r.sharedMaterial.mainTexture);
                     TextureImporter textureImporter = AssetImporter.GetAtPath(p) as TextureImporter;
                     textureImporter.isReadable = true;
                     textureImporter.mipmapEnabled = false;
                     textureImporter.SaveAndReimport();
-
                 }
+
                 AvatarElementConfig.instance.elements.Add(element);
             }
+
             AvatarElementConfig.Save();
             OnEnable();
         }
@@ -633,7 +598,6 @@ namespace ZyGame.Editor.Avatar
         {
             if (element.icon is null)
             {
-
                 MeshFilter meshFilter = element.fbx.GetComponentInChildren<MeshFilter>();
                 Mesh mesh = default;
                 Material material = null;
@@ -646,6 +610,7 @@ namespace ZyGame.Editor.Avatar
                     SkinnedMeshRenderer skinned = element.fbx.GetComponentInChildren<SkinnedMeshRenderer>();
                     mesh = skinned is null ? null : skinned.sharedMesh;
                 }
+
                 if (mesh is not null)
                 {
                     PreviewRenderUtility m_PreviewRenderUtility = new PreviewRenderUtility();
@@ -663,7 +628,7 @@ namespace ZyGame.Editor.Avatar
                     m_PreviewRenderUtility.DrawMesh(mesh, Matrix4x4.identity, material, 0);
                     m_PreviewRenderUtility.camera.Render();
                     m_PreviewRenderUtility.EndPreview();
-                    Texture2D texture = m_PreviewRenderUtility.camera.targetTexture.ReadTexture2D();//(Texture2D)m_PreviewRenderUtility.EndPreview();
+                    Texture2D texture = m_PreviewRenderUtility.camera.targetTexture.ReadTexture2D(); //(Texture2D)m_PreviewRenderUtility.EndPreview();
                     m_PreviewRenderUtility.Cleanup();
                     string iconPath = AssetDatabase.GetAssetPath(AvatarElementConfig.instance.iconOutput) + "/" + element.fbx.name + "_icon.png";
                     File.WriteAllBytes(iconPath, texture.EncodeToPNG());

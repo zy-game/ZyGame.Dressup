@@ -9,20 +9,24 @@ namespace ZyGame.Dressup
 {
     public class DressupComponent : IDisposable
     {
+        private Texture2D _texture2D;
+
         public DressupManager dressup { get; private set; }
         public DressupData data { get; set; }
         public GameObject gameObject { get; private set; }
         public GameObject[] childs { get; private set; }
+
+        public Texture2D texture => _texture2D;
 
         public DressupComponent(DressupManager dressup)
         {
             this.dressup = dressup;
         }
 
-        public IEnumerator DressupTextureAndGameObject(DressupData charge)
+        public DressupComponent(DressupManager manager, params GameObject[] childs)
         {
-            yield return DressupGameObject(charge);
-            yield return DressupTexture(charge);
+            this.dressup = manager;
+            this.childs = childs;
         }
 
         public IEnumerator DressupGameObject(DressupData charge)
@@ -31,31 +35,46 @@ namespace ZyGame.Dressup
             {
                 yield break;
             }
-            if (charge.model != data?.model && dressup.IsChild(charge.element) is false)
+
+            if (data is null || charge.model != data.model)
             {
-                yield return LoadAsync<GameObject>(charge, args => SetGameObject(args, charge));
+                yield return LoadAsync<GameObject>(charge.model, charge.version, charge.crc, LoadGameObjectCompltion);
             }
         }
 
-        public IEnumerable DressupTexture(DressupData charge)
+        private void LoadGameObjectCompltion(GameObject obj)
+        {
+            if (this.gameObject != null)
+            {
+                GameObject.DestroyImmediate(gameObject);
+            }
+
+            this.gameObject = obj;
+            this.gameObject.SetParent(dressup.gameObject, Vector3.zero, Vector3.zero, Vector3.one);
+        }
+
+        public IEnumerator DressupTexture(DressupData charge)
         {
             if (charge == null || string.IsNullOrEmpty(charge.texture))
             {
+                Debug.Log("Not set Texture Data:" + charge.element);
                 yield break;
             }
-            if (this.gameObject is null || this.childs is null || this.childs.Length is 0)
-            {
-                yield break;
-            }
-            yield return LoadAsync<Texture2D>(charge, args => SetTexture2D(args, charge));
 
+            if (this.gameObject is null && this.childs is null && this.childs.Length is 0)
+            {
+                Debug.Log("Not Dressup GameObject:" + charge.element);
+                yield break;
+            }
+
+            yield return LoadAsync<Texture2D>(charge.texture, 0, 0, SetTexture2D);
         }
 
-        private IEnumerator LoadAsync<T>(DressupData dressupData, Action<T> action) where T : Object
+        private IEnumerator LoadAsync<T>(string path, uint version, uint crc, Action<T> action) where T : Object
         {
             bool m = false;
             T result = null;
-            dressup.AssetLoader.LoadAsync<T>(dressupData.model, dressupData.version, dressupData.crc, args =>
+            dressup.AssetLoader.LoadAsync<T>(path, version, crc, args =>
             {
                 result = args;
                 m = true;
@@ -64,23 +83,25 @@ namespace ZyGame.Dressup
             action(result);
         }
 
-        public void SetTexture2D(Texture2D texture, DressupData dressupData)
+        public void SetTexture2D(Texture texture)
         {
-            if (this.gameObject is not null)
+            _texture2D = texture as Texture2D;
+            if (this.gameObject != null)
             {
                 Renderer renderer = gameObject.GetComponentInChildren<Renderer>();
                 if (renderer != null)
                 {
                     renderer.sharedMaterial.mainTexture = texture;
                 }
-                Debug.Log("[SET CHILD TEXTURE]" + renderer.name + " -> " + dressupData.texture);
+
+                Debug.Log("[SET  TEXTURE]" + renderer.name + " -> " + texture.name);
             }
             else
             {
                 for (int i = 0; i < childs.Length; i++)
                 {
                     Renderer renderer = childs[i].GetComponentInChildren<Renderer>();
-                    Debug.Log("[SET CHILD TEXTURE]" + renderer.name + " -> " + dressupData.texture);
+                    Debug.Log("[SET CHILD TEXTURE]" + renderer.name + " -> " + texture.name);
                     if (renderer != null)
                     {
                         renderer.sharedMaterial.mainTexture = texture;
@@ -89,21 +110,6 @@ namespace ZyGame.Dressup
             }
         }
 
-        public void SetGameObjectAsChild(params GameObject[] childs)
-        {
-            this.childs = childs;
-            Debug.Log("[SET CHILD OBJECT]" + string.Join(",", childs.Select(x => x.name).ToArray()));
-        }
-
-        public void SetGameObject(GameObject gameObject, DressupData dressupData)
-        {
-            if (this.gameObject is not null)
-            {
-                return;
-            }
-            this.gameObject = gameObject;
-            this.gameObject.SetParent(dressup.gameObject, Vector3.zero, Vector3.zero, Vector3.one);
-        }
 
         public SkinnedMeshRenderer[] GetSkinnedMeshRenderers()
         {
@@ -115,24 +121,42 @@ namespace ZyGame.Dressup
                     skinneds.Add(this.childs[i].GetComponent<SkinnedMeshRenderer>());
                 }
             }
+
             if (gameObject is not null)
             {
                 skinneds.AddRange(this.gameObject.GetComponentsInChildren<SkinnedMeshRenderer>());
             }
+
             return skinneds.ToArray();
         }
 
         public void SetActiveState(bool state)
         {
+            if (gameObject == null)
+            {
+                foreach (var VARIABLE in childs)
+                {
+                    VARIABLE.SetActive(state);
+                }
+
+                return;
+            }
+
             this.gameObject.SetActive(state);
         }
 
         public void Dispose()
         {
-            GameObject.DestroyImmediate(gameObject);
+            if (gameObject != null)
+            {
+                GameObject.DestroyImmediate(gameObject);
+            }
+
             this.data = null;
             this.dressup = null;
             this.gameObject = null;
+            this._texture2D = null;
+            this.childs = Array.Empty<GameObject>();
         }
     }
 }

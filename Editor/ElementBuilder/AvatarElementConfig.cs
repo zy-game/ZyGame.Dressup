@@ -19,32 +19,98 @@ namespace ZyGame.Editor.Avatar
         public List<EditorGroupData> groups;
         public List<ElementItemData> elements;
 
-        public NodeChild[] GetChildren(Element element)
+        public bool IsChild(Element element, string group)
         {
             if (nodes is null || nodes.Count is 0)
             {
-                return Array.Empty<NodeChild>();
+                return false;
             }
-            NodeData nodeData = nodes.Find(x => x.basic == element);
-            if (nodeData is null)
+
+            foreach (var item in nodes)
             {
-                return Array.Empty<NodeChild>();
+                if (item.group != group)
+                {
+                    continue;
+                }
+
+                NodeChild nodeChild = item.childs.Find(x => x.element == element);
+                if (nodeChild is null)
+                {
+                    continue;
+                }
+
+                return true;
             }
-            return nodeData.childs.ToArray();
+
+            return false;
         }
 
-        public string GetNodePath(Element element)
+        public string[] GetChildPath(Element element, string group)
         {
             if (nodes is null || nodes.Count is 0)
             {
-                return string.Empty;
+                return Array.Empty<string>();
             }
-            NodeData nodeData = nodes.Find(x => x.basic == element);
+
+            foreach (var item in nodes)
+            {
+                if (item.group != group)
+                {
+                    continue;
+                }
+
+                NodeChild nodeChild = item.childs.Find(x => x.element == element);
+                if (nodeChild is null)
+                {
+                    continue;
+                }
+
+                return nodeChild.path.ToArray();
+            }
+
+            return Array.Empty<string>();
+        }
+
+        public Element GetParentElement(Element element, string group)
+        {
+            if (nodes is null || nodes.Count is 0)
+            {
+                return Element.None;
+            }
+
+            foreach (var item in nodes)
+            {
+                if (item.group != group)
+                {
+                    continue;
+                }
+
+                NodeChild nodeChild = item.childs.Find(x => x.element == element);
+                if (nodeChild is null)
+                {
+                    continue;
+                }
+
+                return item.basic;
+            }
+
+            return Element.None;
+        }
+
+        public NodeChild[] GetChildList(Element element, string group)
+        {
+            if (nodes is null || nodes.Count is 0)
+            {
+                return Array.Empty<NodeChild>();
+            }
+
+            NodeData nodeData = nodes.Find(x => x.basic == element && x.group == group);
             if (nodeData is null)
             {
-                return string.Empty;
+                return default;
             }
-            return nodeData.path;
+
+            return nodeData.childs.ToArray();
         }
     }
 
@@ -77,14 +143,14 @@ namespace ZyGame.Editor.Avatar
         public Element element;
         public uint version;
         public Texture2D icon;
+
         public Texture2D texture;
-        public List<ElementItemData> childs;
+        // public List<ElementItemData> childs;
 
         [NonSerialized] public bool foldout;
 
         public ElementItemData()
         {
-
         }
 
         internal OutData GetOutData(string outpath)
@@ -103,7 +169,7 @@ namespace ZyGame.Editor.Avatar
             dressupData.crc = 0;
             dressupData.version = version;
             dressupData.model_name = group;
-            dressupData.publish_status = (int)Ex.PublishState.Publish;
+            dressupData.publish_status = (int)API.PublishState.Publish;
             return dressupData;
         }
     }
@@ -128,10 +194,12 @@ namespace ZyGame.Editor.Avatar
             this.localtion = localtion;
         }
     }
+
     public class Config<T> : ScriptableObject where T : ScriptableObject
     {
         private Action _disposeable;
         private static T _instance;
+
         public static T instance
         {
             get
@@ -140,6 +208,7 @@ namespace ZyGame.Editor.Avatar
                 {
                     _instance = Load();
                 }
+
                 return _instance;
             }
         }
@@ -158,6 +227,7 @@ namespace ZyGame.Editor.Avatar
             {
                 throw new NullReferenceException(nameof(PathOptions));
             }
+
             string fileName = Path.GetFileName(options.filepath);
             T instance = UnityEditorInternal.InternalEditorUtility.LoadSerializedFileAndForget(options.filepath).FirstOrDefault() as T;
             if (instance is null)
@@ -165,6 +235,7 @@ namespace ZyGame.Editor.Avatar
                 _instance = instance = Activator.CreateInstance<T>();
                 Save();
             }
+
             return _instance = instance;
         }
 
@@ -175,10 +246,12 @@ namespace ZyGame.Editor.Avatar
             {
                 throw new NullReferenceException(nameof(PathOptions));
             }
+
             if (_instance is null)
             {
                 return;
             }
+
             UnityEditorInternal.InternalEditorUtility.SaveToSerializedFileAndForget(new Object[1] { _instance }, options.filepath, true);
         }
     }
