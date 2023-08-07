@@ -273,6 +273,7 @@ namespace ZyGame.Editor.Avatar
                 itemData.element = t;
                 if (AvatarElementConfig.instance.IsChild(t, itemData.group))
                 {
+                    Debug.Log("重置????" + itemData.element);
                     string[] pathList = AvatarElementConfig.instance.GetChildPath(t, itemData.group);
                     if (pathList is not null && pathList.Length > 0)
                     {
@@ -282,6 +283,18 @@ namespace ZyGame.Editor.Avatar
                         {
                             itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
                         }
+
+                 
+                    }
+                }
+                else
+                {
+                    Debug.Log("重置");
+                    SkinnedMeshRenderer renderer = itemData.fbx?.GetComponentInChildren<SkinnedMeshRenderer>();
+                    if (renderer != null)
+                    {
+                        itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
+               
                     }
                 }
 
