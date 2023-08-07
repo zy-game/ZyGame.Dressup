@@ -306,6 +306,7 @@ namespace ZyGame.Editor.Avatar
                     itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
                 }
 
+                itemData.icon = AssetPreview.GetAssetPreview(itemData.fbx);
                 itemData.isNormal = AvatarElementConfig.instance.normals.Contains(t);
                 AvatarElementConfig.Save();
             }
