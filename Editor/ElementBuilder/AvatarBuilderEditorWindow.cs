@@ -271,6 +271,7 @@ namespace ZyGame.Editor.Avatar
             if (t != itemData.element)
             {
                 itemData.element = t;
+                Renderer renderer = null;
                 if (AvatarElementConfig.instance.IsChild(t, itemData.group))
                 {
                     Debug.Log("重置????" + itemData.element);
@@ -278,24 +279,31 @@ namespace ZyGame.Editor.Avatar
                     if (pathList is not null && pathList.Length > 0)
                     {
                         Transform transform = itemData.fbx.transform.Find(pathList[0]);
-                        Renderer renderer = transform?.GetComponent<Renderer>();
-                        if (renderer != null)
-                        {
-                            itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-                        }
-
-                 
+                        renderer = transform?.GetComponent<Renderer>();
                     }
                 }
                 else
                 {
-                    Debug.Log("重置");
-                    SkinnedMeshRenderer renderer = itemData.fbx?.GetComponentInChildren<SkinnedMeshRenderer>();
+                    NodeData nodeData = AvatarElementConfig.instance.nodes.Find(x => x.basic == itemData.element && x.group == itemData.group);
+                    if (nodeData is null)
+                    {
+                        renderer = itemData.fbx?.GetComponentInChildren<SkinnedMeshRenderer>();
+                    }
+                    else
+                    {
+                        Transform transform = itemData.fbx.transform.Find(nodeData.path);
+                        renderer = transform?.GetComponent<Renderer>();
+                    }
+
                     if (renderer != null)
                     {
                         itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
-               
                     }
+                }
+
+                if (renderer != null)
+                {
+                    itemData.texture = (Texture2D)renderer.sharedMaterial.mainTexture;
                 }
 
                 itemData.isNormal = AvatarElementConfig.instance.normals.Contains(t);
