@@ -363,16 +363,6 @@ namespace ZyGame.Editor.Avatar
                 AssetDatabase.Refresh();
             }
 
-            List<GameObject> skeletons = new List<GameObject>();
-            foreach (var g in AvatarElementConfig.instance.groups)
-            {
-                if (skeletons.Contains(g.skelton))
-                {
-                    continue;
-                }
-
-                skeletons.Add(g.skelton);
-            }
 
             List<AssetBundleBuild> builds = new List<AssetBundleBuild>();
             for (int i = 0; i < elements.Length; i++)
@@ -389,14 +379,20 @@ namespace ZyGame.Editor.Avatar
                 });
             }
 
-            for (int i = 0; i < skeletons.Count; i++)
+            foreach (var g in AvatarElementConfig.instance.groups)
             {
+                if (builds.Where(x => x.assetBundleName == $"{g.skelton.name.ToLower()}.assetbundle").Count() > 0)
+                {
+                    continue;
+                }
+
                 builds.Add(new AssetBundleBuild()
                 {
-                    assetBundleName = $"{skeletons[i].name.ToLower()}.assetbundle",
-                    assetNames = new string[] { AssetDatabase.GetAssetPath(skeletons[i]) }
+                    assetBundleName = $"{g.skelton.name.ToLower()}.assetbundle",
+                    assetNames = new string[] { AssetDatabase.GetAssetPath(g.skelton) }
                 });
             }
+
 
             string bundlePath = $"{folder}/assetbundles";
             CreateDirectory(bundlePath);
@@ -452,7 +448,17 @@ namespace ZyGame.Editor.Avatar
         {
             string iconPath = $"{folder}/{itemData.group}/icons/{itemData.group}_{itemData.element}_{itemData.fbx.name}_icon.png";
             string elementPath = $"{folder}/{itemData.group}/element/";
-            string bundleFilePath = $"{bundlePath}/{itemData.group}_{itemData.element}_{itemData.fbx.name.ToLower()}.assetbundle";
+            string bundleFilePath = String.Empty;
+
+            if (itemData.element is Element.None)
+            {
+                bundleFilePath = $"{bundlePath}/{itemData.fbx.name.ToLower()}.assetbundle";
+            }
+            else
+            {
+                bundleFilePath = $"{bundlePath}/{itemData.group}_{itemData.element}_{itemData.fbx.name.ToLower()}.assetbundle";
+            }
+
             //todo 移动资源包
             if (File.Exists(bundleFilePath))
             {
@@ -465,7 +471,7 @@ namespace ZyGame.Editor.Avatar
                 }
 
                 CreateDirectory(Path.GetDirectoryName(dest));
-                File.Move(bundleFilePath, dest);
+                File.Copy(bundleFilePath, dest);
             }
 
             CreateDirectory(Path.GetDirectoryName(iconPath));
@@ -486,13 +492,22 @@ namespace ZyGame.Editor.Avatar
                 File.WriteAllBytes(iconPath, itemData.icon.EncodeToPNG());
             }
 
+            if (itemData.element is Element.None)
+            {
+                bundleFilePath = $"{itemData.group}/bundles/{itemData.fbx.name}.assetbundle";
+            }
+            else
+            {
+                bundleFilePath = $"{itemData.group}/bundles/{itemData.group}_{itemData.element}_{itemData.fbx.name}.assetbundle";
+            }
+
             return new OutData
             {
                 icon = $"{itemData.group}/icons/{itemData.group}_{itemData.element}_{itemData.fbx.name}_icon.png",
                 is_normal = itemData.isNormal,
                 element = (int)itemData.element,
                 group = itemData.group,
-                model = $"{itemData.group}/bundles/{itemData.group}_{itemData.element}_{itemData.fbx.name}.assetbundle",
+                model = bundleFilePath,
                 texture = itemData.texture == null ? string.Empty : $"{itemData.group}/element/{itemData.group}_{itemData.element}_{itemData.texture.name}.png",
                 version = version == 0 ? itemData.version : version,
                 crc = crc
