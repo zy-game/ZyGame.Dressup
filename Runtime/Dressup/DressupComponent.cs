@@ -30,30 +30,6 @@ namespace ZyGame.Dressup
             this.childs = childs;
         }
 
-        public IEnumerator DressupGameObject(DressupData charge)
-        {
-            if (charge == null || string.IsNullOrEmpty(charge.model))
-            {
-                yield break;
-            }
-
-            if (data is null || charge.model != data.model)
-            {
-                yield return LoadAsync<GameObject>(charge.model, charge.version, charge.crc, LoadGameObjectCompltion);
-            }
-        }
-
-        private void LoadGameObjectCompltion(GameObject obj)
-        {
-            if (this.gameObject != null)
-            {
-                GameObject.DestroyImmediate(gameObject);
-            }
-
-            this.gameObject = obj;
-            this.gameObject.SetParent(dressup.gameObject, Vector3.zero, Vector3.zero, Vector3.one);
-        }
-
         public IEnumerator DressupTexture(DressupData charge)
         {
             if (charge == null || string.IsNullOrEmpty(charge.texture))
@@ -92,7 +68,7 @@ namespace ZyGame.Dressup
                 Renderer renderer = gameObject.GetComponentInChildren<Renderer>();
                 if (renderer != null)
                 {
-                    renderer.sharedMaterial.shader = Shader.Find("Universal Render Pipeline/Lit");
+                    // renderer.sharedMaterial.shader = Shader.Find("Universal Render Pipeline/Lit");
                     renderer.sharedMaterial.mainTexture = texture;
                     Debug.Log("[SET  TEXTURE]" + renderer.name + " -> " + texture.name);
                 }
@@ -105,7 +81,7 @@ namespace ZyGame.Dressup
                     if (renderer != null)
                     {
                         Debug.Log("[SET CHILD TEXTURE]" + renderer.name + " -> " + texture.name);
-                        renderer.sharedMaterial.shader = Shader.Find("Universal Render Pipeline/Lit");
+                        // renderer.sharedMaterial.shader = Shader.Find("Universal Render Pipeline/Lit");
                         renderer.sharedMaterial.mainTexture = texture;
                     }
                 }

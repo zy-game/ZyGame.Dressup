@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -82,13 +83,19 @@ namespace ZyGame.Dressup
         public IAssetLoader AssetLoader { get; private set; }
         public Action<string, object> Notify { get; private set; }
         public Dictionary<Element, DressupComponent> components { get; }
-
-        public Dictionary<string, GameObject> basicList { get; private set; }
+        private List<DressGroup> basicList { get; set; }
         public Action OpenFileCallback { get; private set; }
         public Action<byte[]> LoadFileCompeltion { get; set; }
         public GroupInfo groupOptions { get; private set; }
         private const int COMBINE_TEXTURE_MAX = 2048;
         private const string COMBINE_DIFFUSE_TEXTURE = "_MainTex";
+
+        class DressGroup
+        {
+            public string name;
+            public GameObject gameObject;
+            public List<Element> elements;
+        }
 
         public DressupManager(DressupOptions options)
         {
@@ -105,14 +112,7 @@ namespace ZyGame.Dressup
             this.OpenFileCallback = options.OpenFileCallback;
             this.components = new Dictionary<Element, DressupComponent>();
             this.groupOptions = groupDatas.Find(x => x.name == this.group);
-            this.basicList = new Dictionary<string, GameObject>();
-            // ElementGroupData groupData = groupDatas.Find(x => x.name == options.group);
-            // if (groupData is null)
-            // {
-            //     Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
-            //     return;
-            // }
-
+            this.basicList = new List<DressGroup>();
             this.AssetLoader.LoadAsync<GameObject>(options.skeleton, options.version, options.crc, LoadSkeletonCompletion);
         }
 
@@ -145,7 +145,13 @@ namespace ZyGame.Dressup
                     item.Dispose();
                 }
 
+                foreach (var VARIABLE in basicList)
+                {
+                    GameObject.DestroyImmediate(VARIABLE.gameObject);
+                }
+
                 components.Clear();
+                basicList.Clear();
                 Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
                 return;
             }
@@ -155,16 +161,14 @@ namespace ZyGame.Dressup
                 return;
             }
 
-            ChildInfo[] children = groupOptions.GetChildList(element);
-            if (children is not null && children.Length is not 0)
+            DressGroup group = basicList.Find(x => x.elements.Contains(element));
+            if (group != null)
             {
-                foreach (var item in children)
+                group.elements.Remove(element);
+                if (group.elements.Count == 0)
                 {
-                    if (components.TryGetValue(item.element, out DressupComponent childComponent))
-                    {
-                        childComponent.Dispose();
-                        components.Remove(item.element);
-                    }
+                    GameObject.DestroyImmediate(group.gameObject);
+                    basicList.Remove(group);
                 }
             }
 
@@ -294,14 +298,25 @@ namespace ZyGame.Dressup
                 if (!components.TryGetValue(dressupData.element, out DressupComponent component))
                 {
                     string modleName = Path.GetFileNameWithoutExtension(dressupData.model);
-                    if (!basicList.TryGetValue(modleName, out GameObject obj))
+                    DressGroup group = basicList.Find(x => x.name == modleName);
+                    if (group is null)
                     {
-                        yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args => { basicList.Add(modleName, obj = args); });
+                        yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args =>
+                        {
+                            args.SetParent(gameObject, Vector3.zero, Vector3.zero, Vector3.one);
+                            basicList.Add(group = new DressGroup()
+                            {
+                                name = modleName,
+                                gameObject = args,
+                                elements = new List<Element>()
+                            });
+                        });
                     }
 
                     if (!groupOptions.IsChild(dressupData.element))
                     {
-                        components.Add(dressupData.element, component = new DressupComponent(this, obj));
+                        group.elements.Add(dressupData.element);
+                        components.Add(dressupData.element, component = new DressupComponent(this, group.gameObject));
                     }
                     else
                     {
@@ -309,16 +324,17 @@ namespace ZyGame.Dressup
                         List<GameObject> children = new List<GameObject>();
                         foreach (var VARIABLE in pathList)
                         {
-                            Transform transform = obj.transform.Find(VARIABLE);
+                            Transform transform = group.gameObject.transform.Find(VARIABLE);
                             if (transform == null)
                             {
-                                Debug.Log(obj.name + " Not children gameobject:" + VARIABLE);
+                                Debug.Log(group.name + " Not children gameobject:" + VARIABLE);
                                 continue;
                             }
 
                             children.Add(transform.gameObject);
                         }
 
+                        group.elements.Add(dressupData.element);
                         components.Add(dressupData.element, component = new DressupComponent(this, children.ToArray()));
                     }
                 }
