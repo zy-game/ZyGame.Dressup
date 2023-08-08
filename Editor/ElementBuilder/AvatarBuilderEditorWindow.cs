@@ -504,7 +504,7 @@ namespace ZyGame.Editor.Avatar
 
             return new OutData
             {
-                icon = $"{itemData.group}/icons/{itemData.fbx.name}_icon.png",
+                icon = $"{itemData.group}/icons/{itemData.fbx.name.ToLower()}_icon.png",
                 is_normal = itemData.isNormal,
                 element = (int)itemData.element,
                 group = itemData.group,
