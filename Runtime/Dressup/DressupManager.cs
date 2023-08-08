@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace ZyGame.Dressup
 {
@@ -80,7 +81,9 @@ namespace ZyGame.Dressup
         public List<GroupInfo> groupDatas { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
         public Action<string, object> Notify { get; private set; }
-        public Dictionary<Element, DressupComponent> dressups { get; }
+        public Dictionary<Element, DressupComponent> components { get; }
+
+        public Dictionary<string, GameObject> basicList { get; private set; }
         public Action OpenFileCallback { get; private set; }
         public Action<byte[]> LoadFileCompeltion { get; set; }
         public GroupInfo groupOptions { get; private set; }
@@ -100,7 +103,9 @@ namespace ZyGame.Dressup
             this.groupDatas = options.groupDatas;
             this.AssetLoader = options.assetLoader;
             this.OpenFileCallback = options.OpenFileCallback;
-            this.dressups = new Dictionary<Element, DressupComponent>();
+            this.components = new Dictionary<Element, DressupComponent>();
+            this.groupOptions = groupDatas.Find(x => x.name == this.group);
+            this.basicList = new Dictionary<string, GameObject>();
             // ElementGroupData groupData = groupDatas.Find(x => x.name == options.group);
             // if (groupData is null)
             // {
@@ -109,46 +114,6 @@ namespace ZyGame.Dressup
             // }
 
             this.AssetLoader.LoadAsync<GameObject>(options.skeleton, options.version, options.crc, LoadSkeletonCompletion);
-        }
-
-        public bool IsChild(Element element)
-        {
-            if (groupOptions is null)
-            {
-                return false;
-            }
-
-            return groupOptions.IsChild(element);
-        }
-
-        public string[] GetChildPath(Element element)
-        {
-            if (groupOptions is null)
-            {
-                return Array.Empty<string>();
-            }
-
-            return groupOptions.GetChildPath(element);
-        }
-
-        public Element GetParentElement(Element element)
-        {
-            if (groupOptions is null)
-            {
-                return Element.None;
-            }
-
-            return groupOptions.GetParentElement(element);
-        }
-
-        public ChildInfo[] GetChildList(Element element)
-        {
-            if (groupOptions is null)
-            {
-                return Array.Empty<ChildInfo>();
-            }
-
-            return groupOptions.GetChildList(element);
         }
 
         private void LoadSkeletonCompletion(GameObject result)
@@ -175,43 +140,43 @@ namespace ZyGame.Dressup
         {
             if (element is Element.None)
             {
-                foreach (var item in dressups.Values)
+                foreach (var item in components.Values)
                 {
                     item.Dispose();
                 }
 
-                dressups.Clear();
+                components.Clear();
                 Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
                 return;
             }
 
-            if (!dressups.TryGetValue(element, out DressupComponent component))
+            if (!components.TryGetValue(element, out DressupComponent component))
             {
                 return;
             }
 
-            ChildInfo[] children = GetChildList(element);
+            ChildInfo[] children = groupOptions.GetChildList(element);
             if (children is not null && children.Length is not 0)
             {
                 foreach (var item in children)
                 {
-                    if (dressups.TryGetValue(item.element, out DressupComponent childComponent))
+                    if (components.TryGetValue(item.element, out DressupComponent childComponent))
                     {
                         childComponent.Dispose();
-                        dressups.Remove(item.element);
+                        components.Remove(item.element);
                     }
                 }
             }
 
             component.Dispose();
-            dressups.Remove(element);
+            components.Remove(element);
             Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
         }
 
 
         public void ShowInView(Element element)
         {
-            if (!dressups.TryGetValue(element, out DressupComponent component))
+            if (!components.TryGetValue(element, out DressupComponent component))
             {
                 camera?.ToViewCenter(gameObject);
                 return;
@@ -246,7 +211,7 @@ namespace ZyGame.Dressup
                 config.group = this.group;
                 config.icon = response.data.url;
                 config.md5 = response.data.md5;
-                foreach (var component in dressups.Values)
+                foreach (var component in components.Values)
                 {
                     if (component.data is null)
                     {
@@ -264,7 +229,7 @@ namespace ZyGame.Dressup
 
         public DressupData GetElementData(Element element)
         {
-            if (dressups.TryGetValue(element, out DressupComponent component))
+            if (components.TryGetValue(element, out DressupComponent component))
             {
                 return component.data;
             }
@@ -274,7 +239,7 @@ namespace ZyGame.Dressup
 
         public DressupComponent GetElementComponent(Element element)
         {
-            if (dressups.TryGetValue(element, out DressupComponent component))
+            if (components.TryGetValue(element, out DressupComponent component))
             {
                 return component;
             }
@@ -316,47 +281,55 @@ namespace ZyGame.Dressup
             for (int i = elements.Count - 1; i >= 0; i--)
             {
                 DressupData dressupData = elements[i];
-                if (!dressups.TryGetValue(dressupData.element, out DressupComponent component))
+                if (dressupData.element is Element.None)
                 {
-                    if (!IsChild(dressupData.element))
+                    continue;
+                }
+
+                if (groupOptions is null)
+                {
+                    groupOptions = groupDatas.Find(x => x.name == dressupData.model_name);
+                }
+
+                if (!components.TryGetValue(dressupData.element, out DressupComponent component))
+                {
+                    string modleName = Path.GetFileNameWithoutExtension(dressupData.model);
+                    if (!basicList.TryGetValue(modleName, out GameObject obj))
                     {
-                        dressups.Add(dressupData.element, component = new DressupComponent(this));
+                        yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args => { basicList.Add(modleName, obj = args); });
+                    }
+
+                    if (!groupOptions.IsChild(dressupData.element))
+                    {
+                        components.Add(dressupData.element, component = new DressupComponent(this, obj));
                     }
                     else
                     {
-                        Element parentElement = GetParentElement(dressupData.element);
-                        DressupComponent parent = GetElementComponent(parentElement);
-                        if (parent is null)
-                        {
-                            Debug.Log("Not set parent element:" + parentElement);
-                            continue;
-                        }
-
-                        string[] pathList = GetChildPath(dressupData.element);
+                        string[] pathList = groupOptions.GetChildPath(dressupData.element);
                         List<GameObject> children = new List<GameObject>();
                         foreach (var VARIABLE in pathList)
                         {
-                            Transform transform = parent.gameObject.transform.Find(VARIABLE);
+                            Transform transform = obj.transform.Find(VARIABLE);
                             if (transform == null)
                             {
-                                Debug.Log("Not children gameobject" + VARIABLE);
+                                Debug.Log(obj.name + " Not children gameobject:" + VARIABLE);
                                 continue;
                             }
 
                             children.Add(transform.gameObject);
                         }
 
-                        dressups.Add(dressupData.element, component = new DressupComponent(this, children.ToArray()));
+                        components.Add(dressupData.element, component = new DressupComponent(this, children.ToArray()));
                     }
                 }
 
-                if (IsChild(dressupData.element) is false)
-                {
-                    if (component.data is null || component.data.model.Equals(dressupData.model) is false)
-                    {
-                        yield return component.DressupGameObject(dressupData);
-                    }
-                }
+                // if (IsChild(dressupData.element) is false)
+                // {
+                //     if (component.data is null || component.data.model.Equals(dressupData.model) is false)
+                //     {
+                //         yield return component.DressupGameObject(dressupData);
+                //     }
+                // }
 
                 if (component is null)
                 {
@@ -375,6 +348,18 @@ namespace ZyGame.Dressup
             Notify(EventNames.SET_ELEMENT_DATA_COMPLATED, default(object));
         }
 
+        private IEnumerator LoadAsync<T>(string path, uint version, uint crc, Action<T> action) where T : Object
+        {
+            bool m = false;
+            T result = null;
+            AssetLoader.LoadAsync<T>(path, version, crc, args =>
+            {
+                result = args;
+                m = true;
+            });
+            yield return new WaitUntil(() => m);
+            action(result);
+        }
 
         public void Combine()
         {
@@ -465,7 +450,7 @@ namespace ZyGame.Dressup
                 combineInstances[i].mesh.uv = oldUV[i];
             }
 
-            foreach (var item in dressups.Values)
+            foreach (var item in components.Values)
             {
                 item.SetActiveState(false);
             }
@@ -477,7 +462,7 @@ namespace ZyGame.Dressup
             {
                 LoadFileCompeltion -= Runnable_OpenFileComplated;
 
-                if (!this.dressups.TryGetValue(element, out DressupComponent component))
+                if (!this.components.TryGetValue(element, out DressupComponent component))
                 {
                     return;
                 }
@@ -512,7 +497,7 @@ namespace ZyGame.Dressup
                     return;
                 }
 
-                if (!this.dressups.TryGetValue(element, out DressupComponent component))
+                if (!this.components.TryGetValue(element, out DressupComponent component))
                 {
                     return;
                 }
@@ -531,7 +516,7 @@ namespace ZyGame.Dressup
         {
             if (element == Element.None)
             {
-                foreach (var VARIABLE in dressups.Values)
+                foreach (var VARIABLE in components.Values)
                 {
                     if (normalList.Contains(VARIABLE.data.element))
                     {
@@ -544,7 +529,7 @@ namespace ZyGame.Dressup
                 return;
             }
 
-            if (!this.dressups.TryGetValue(element, out DressupComponent component))
+            if (!this.components.TryGetValue(element, out DressupComponent component))
             {
                 return;
             }
@@ -561,7 +546,7 @@ namespace ZyGame.Dressup
         {
             if (element == Element.None)
             {
-                foreach (var VARIABLE in dressups.Values)
+                foreach (var VARIABLE in components.Values)
                 {
                     VARIABLE.SetActiveState(true);
                 }
@@ -569,7 +554,7 @@ namespace ZyGame.Dressup
                 return;
             }
 
-            if (!this.dressups.TryGetValue(element, out DressupComponent component))
+            if (!this.components.TryGetValue(element, out DressupComponent component))
             {
                 return;
             }
@@ -579,12 +564,12 @@ namespace ZyGame.Dressup
 
         public void Dispose()
         {
-            foreach (var item in dressups.Values)
+            foreach (var item in components.Values)
             {
                 item.Dispose();
             }
 
-            dressups.Clear();
+            components.Clear();
             GameObject.DestroyImmediate(this.gameObject);
             group = string.Empty;
             options = null;

@@ -18,12 +18,13 @@ namespace ZyGame.Dressup
 
         public Texture2D texture => _texture2D;
 
-        public DressupComponent(DressupManager dressup)
+        public DressupComponent(DressupManager dressup, GameObject gameObject)
         {
             this.dressup = dressup;
+            this.gameObject = gameObject;
         }
 
-        public DressupComponent(DressupManager manager, params GameObject[] childs)
+        public DressupComponent(DressupManager manager, GameObject[] childs)
         {
             this.dressup = manager;
             this.childs = childs;
@@ -91,19 +92,20 @@ namespace ZyGame.Dressup
                 Renderer renderer = gameObject.GetComponentInChildren<Renderer>();
                 if (renderer != null)
                 {
+                    renderer.sharedMaterial.shader = Shader.Find("Universal Render Pipeline/Lit");
                     renderer.sharedMaterial.mainTexture = texture;
+                    Debug.Log("[SET  TEXTURE]" + renderer.name + " -> " + texture.name);
                 }
-
-                Debug.Log("[SET  TEXTURE]" + renderer.name + " -> " + texture.name);
             }
             else
             {
                 for (int i = 0; i < childs.Length; i++)
                 {
                     Renderer renderer = childs[i].GetComponentInChildren<Renderer>();
-                    Debug.Log("[SET CHILD TEXTURE]" + renderer.name + " -> " + texture.name);
                     if (renderer != null)
                     {
+                        Debug.Log("[SET CHILD TEXTURE]" + renderer.name + " -> " + texture.name);
+                        renderer.sharedMaterial.shader = Shader.Find("Universal Render Pipeline/Lit");
                         renderer.sharedMaterial.mainTexture = texture;
                     }
                 }

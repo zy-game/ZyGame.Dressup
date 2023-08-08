@@ -630,7 +630,7 @@ namespace ZyGame.Editor.Avatar
 
         private static string GetAssetPath(Object target)
         {
-            return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(target)).ToLower();
+            return target.name.ToLower();
         }
 
         class BundleDependencis
