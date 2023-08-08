@@ -196,14 +196,14 @@ namespace ZyGame.Editor.Avatar
                     });
                 }
 
-                InitConfig write = new InitConfig()
-                {
-                    nodes = AvatarElementConfig.instance.nodes,
-                    groups = groups,
-                    normal = AvatarElementConfig.instance.normals,
-                };
+                // InitConfig write = new InitConfig()
+                // {
+                //     nodes = AvatarElementConfig.instance.nodes,
+                //     groups = groups,
+                //     normal = AvatarElementConfig.instance.normals,
+                // };
 
-                File.WriteAllText(temp + "/avatar_setting.json", JsonConvert.SerializeObject(write));
+                // File.WriteAllText(temp + "/avatar_setting.json", JsonConvert.SerializeObject(write));
                 EditorUtility.DisplayDialog("Tips", "Export Avatar Config Completion", "Ok");
             }
 

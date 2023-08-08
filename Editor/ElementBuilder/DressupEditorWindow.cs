@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -448,7 +449,7 @@ namespace ZyGame.Editor.Avatar
                 for (int i = 0; i < DressupEditorOptions.instance.options.Count; i++)
                 {
                     GroupOptions options = DressupEditorOptions.instance.options[i];
-                    string bundleName = $"{options.skeleton.name}.assetbundle";
+                    string bundleName = $"{GetAssetPath(options.skeleton)}";
                     string targetPath = String.Empty;
                     if (File.Exists($"{output}/{bundleName}"))
                     {
@@ -473,7 +474,7 @@ namespace ZyGame.Editor.Avatar
 
                     foreach (var VARIABLE in options.elements)
                     {
-                        bundleName = $"{VARIABLE.target.name}.assetbundle";
+                        bundleName = $"{GetAssetPath(VARIABLE.target)}";
                         targetPath = $"{Application.dataPath}/../output/{options.name}/bundles/{bundleName}";
                         if (Directory.Exists(Path.GetDirectoryName(targetPath)) is false)
                         {
@@ -521,7 +522,7 @@ namespace ZyGame.Editor.Avatar
 
                 texture2D = new Texture2D(optionsData.texture.width, optionsData.texture.height, TextureFormat.RGBA32, false);
                 texture2D.SetPixels(optionsData.texture.GetPixels());
-                string texturePath = $"{Application.dataPath}/../output/{optionsData.group}/element/{optionsData.texture.name.ToLower()}.png";
+                string texturePath = $"{Application.dataPath}/../output/{optionsData.group}/element/{GetAssetPath(optionsData.texture)}.png";
                 if (Directory.Exists(Path.GetDirectoryName(texturePath)) is false)
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(texturePath));
@@ -543,7 +544,6 @@ namespace ZyGame.Editor.Avatar
                     }
 
                     optionsData.icon = elementOptions.icon;
-
                     if (optionsData.icon == null)
                     {
                         EditorUtility.DisplayDialog("Errored", "部件没有指定Icon！Element:" + optionsData.element + " Name:" + optionsData.texture.name, "Ok");
@@ -553,7 +553,7 @@ namespace ZyGame.Editor.Avatar
 
                 texture2D = new Texture2D(optionsData.icon.width, optionsData.icon.height, TextureFormat.RGBA32, false);
                 texture2D.SetPixels(optionsData.icon.GetPixels());
-                string iconPath = $"{Application.dataPath}/../output/{optionsData.group}/icons/{optionsData.texture.name.ToLower()}_icon.png";
+                string iconPath = $"{Application.dataPath}/../output/{optionsData.group}/icons/{GetAssetPath(optionsData.texture)}_icon.png";
                 if (Directory.Exists(Path.GetDirectoryName(iconPath)) is false)
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(iconPath));
@@ -574,12 +574,12 @@ namespace ZyGame.Editor.Avatar
 
                 list.Add(new OutDressupData
                 {
-                    icon = $"{optionsData.group}/icons/{optionsData.texture.name.ToLower()}_icon.png",
+                    icon = $"{optionsData.group}/icons/{GetAssetPath(optionsData.texture)}_icon.png",
                     is_normal = DressupEditorOptions.instance.normals.Contains(optionsData.element),
                     element = (int)optionsData.element,
                     group = optionsData.group,
-                    model = $"{optionsData.group}/bundles/{elementOptions.target.name.ToLower()}.assetbundle",
-                    texture = optionsData.texture == null ? string.Empty : $"{optionsData.group}/element/{optionsData.texture.name.ToLower()}.png",
+                    model = $"{optionsData.group}/bundles/{GetAssetPath(elementOptions.target)}",
+                    texture = optionsData.texture == null ? string.Empty : $"{optionsData.group}/element/{GetAssetPath(optionsData.texture)}.png",
                     version = 0,
                     crc = 0
                 });
@@ -591,7 +591,46 @@ namespace ZyGame.Editor.Avatar
                 File.WriteAllText(jsonPath, Newtonsoft.Json.JsonConvert.SerializeObject(VARIABLE.Value));
             }
 
+            InitConfig initConfig = new InitConfig();
+            initConfig.groups = new List<GroupInfo>();
+            foreach (var group in DressupEditorOptions.instance.options)
+            {
+                GroupInfo info = new GroupInfo();
+                info.name = group.name;
+                info.elements = new List<ElementInfo>();
+                foreach (var element in group.elements)
+                {
+                    ElementInfo elementInfo = new ElementInfo();
+                    elementInfo.element = element.element;
+                    elementInfo.childs = new List<ChildInfo>();
+                    if (element.childs is null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var child in element.childs)
+                    {
+                        elementInfo.childs.Add(new ChildInfo()
+                        {
+                            element = child.element,
+                            path = child.path
+                        });
+                    }
+
+                    info.elements.Add(elementInfo);
+                }
+
+                initConfig.groups.Add(info);
+            }
+
+            initConfig.normal = DressupEditorOptions.instance.normals;
+            File.WriteAllText(Application.dataPath + "/../output/avatar_setting.json", JsonConvert.SerializeObject(initConfig));
             EditorUtility.DisplayDialog("Tips", "Build Complete!", "OK");
+        }
+
+        private static string GetAssetPath(Object target)
+        {
+            return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(target)).ToLower();
         }
 
         class BundleDependencis
@@ -604,7 +643,7 @@ namespace ZyGame.Editor.Avatar
                 this.target = target;
                 build = new AssetBundleBuild()
                 {
-                    assetBundleName = target.name + ".assetbundle",
+                    assetBundleName = GetAssetPath(this.target),
                     assetNames = new[] { AssetDatabase.GetAssetPath(this.target) }
                 };
             }

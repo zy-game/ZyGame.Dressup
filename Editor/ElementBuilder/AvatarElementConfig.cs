@@ -115,6 +115,29 @@ namespace ZyGame.Editor.Avatar
     }
 
     [Serializable]
+    public class NodeData
+    {
+        public Element basic;
+        public string path;
+        public string group;
+        public List<NodeChild> childs;
+    }
+
+    [Serializable]
+    public class NodeChild
+    {
+        public Element element;
+        public List<string> path;
+    }
+
+    [Serializable]
+    public class ElementGroupData
+    {
+        public string name;
+        public string skelton;
+    }
+
+    [Serializable]
     public class EditorGroupData
     {
         public string name;

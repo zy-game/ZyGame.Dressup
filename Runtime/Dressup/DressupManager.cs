@@ -51,12 +51,14 @@ namespace ZyGame.Dressup
 
         [NonSerialized] public Camera camera;
         [NonSerialized] public List<Element> normals;
+
         [NonSerialized] public Vector3 cameraPosition;
-        [NonSerialized] public List<NodeData> nodeList;
+
+        // [NonSerialized] public List<NodeData> nodeList;
         [NonSerialized] public Action OpenFileCallback;
         [NonSerialized] public IAssetLoader assetLoader;
         [NonSerialized] public Action<string, object> Notify;
-        [NonSerialized] public List<ElementGroupData> groupDatas;
+        [NonSerialized] public List<GroupInfo> groupDatas;
     }
 
     public class DressupManager : IDisposable
@@ -70,16 +72,18 @@ namespace ZyGame.Dressup
         public GameObject boneRoot { get; private set; }
         public GameObject skinRoot { get; private set; }
         public GameObject gameObject { get; private set; }
+
         public DressupOptions options { get; private set; }
-        public List<NodeData> nodeList { get; private set; }
+
+        // public List<NodeData> nodeList { get; private set; }
         public List<Element> normalList { get; private set; }
-        public List<ElementGroupData> groupDatas { get; private set; }
+        public List<GroupInfo> groupDatas { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
         public Action<string, object> Notify { get; private set; }
         public Dictionary<Element, DressupComponent> dressups { get; }
         public Action OpenFileCallback { get; private set; }
         public Action<byte[]> LoadFileCompeltion { get; set; }
-
+        public GroupInfo groupOptions { get; private set; }
         private const int COMBINE_TEXTURE_MAX = 2048;
         private const string COMBINE_DIFFUSE_TEXTURE = "_MainTex";
 
@@ -91,7 +95,7 @@ namespace ZyGame.Dressup
             this.group = options.group;
             this.camera = options.camera;
             this.Notify = options.Notify;
-            this.nodeList = options.nodeList;
+            // this.nodeList = options.nodeList;
             this.normalList = options.normals;
             this.groupDatas = options.groupDatas;
             this.AssetLoader = options.assetLoader;
@@ -109,96 +113,42 @@ namespace ZyGame.Dressup
 
         public bool IsChild(Element element)
         {
-            if (nodeList is null || nodeList.Count is 0)
+            if (groupOptions is null)
             {
                 return false;
             }
 
-            foreach (var item in nodeList)
-            {
-                if (item.group != group)
-                {
-                    continue;
-                }
-
-                NodeChild nodeChild = item.childs.Find(x => x.element == element);
-                if (nodeChild is null)
-                {
-                    continue;
-                }
-
-                return true;
-            }
-
-            return false;
+            return groupOptions.IsChild(element);
         }
 
         public string[] GetChildPath(Element element)
         {
-            if (nodeList is null || nodeList.Count is 0)
+            if (groupOptions is null)
             {
                 return Array.Empty<string>();
             }
 
-            foreach (var item in nodeList)
-            {
-                if (item.group != group)
-                {
-                    continue;
-                }
-
-                NodeChild nodeChild = item.childs.Find(x => x.element == element);
-                if (nodeChild is null)
-                {
-                    continue;
-                }
-
-                return nodeChild.path.ToArray();
-            }
-
-            return Array.Empty<string>();
+            return groupOptions.GetChildPath(element);
         }
 
         public Element GetParentElement(Element element)
         {
-            if (nodeList is null || nodeList.Count is 0)
+            if (groupOptions is null)
             {
                 return Element.None;
             }
 
-            foreach (var item in nodeList)
-            {
-                if (item.group != group)
-                {
-                    continue;
-                }
-
-                NodeChild nodeChild = item.childs.Find(x => x.element == element);
-                if (nodeChild is null)
-                {
-                    continue;
-                }
-
-                return item.basic;
-            }
-
-            return Element.None;
+            return groupOptions.GetParentElement(element);
         }
 
-        public NodeChild[] GetChildList(Element element)
+        public ChildInfo[] GetChildList(Element element)
         {
-            if (nodeList is null || nodeList.Count is 0)
+            if (groupOptions is null)
             {
-                return Array.Empty<NodeChild>();
+                return Array.Empty<ChildInfo>();
             }
 
-            NodeData nodeData = nodeList.Find(x => x.basic == element && x.group == group);
-            if (nodeData is null)
-            {
-                return default;
-            }
-
-            return nodeData.childs.ToArray();
+            return groupOptions.GetChildList(element);
         }
 
         private void LoadSkeletonCompletion(GameObject result)
@@ -240,7 +190,7 @@ namespace ZyGame.Dressup
                 return;
             }
 
-            NodeChild[] children = GetChildList(element);
+            ChildInfo[] children = GetChildList(element);
             if (children is not null && children.Length is not 0)
             {
                 foreach (var item in children)

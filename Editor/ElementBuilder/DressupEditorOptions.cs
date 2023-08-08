@@ -25,7 +25,7 @@ namespace ZyGame.Editor.Avatar
             DressupEditorOptions.Save();
         }
     }
-
+    
     [Serializable]
     public class ChildOptions
     {
@@ -89,6 +89,66 @@ namespace ZyGame.Editor.Avatar
                 }
 
                 return VARIABLE;
+            }
+
+            return default;
+        }
+
+        public string[] GetChildPath(Element element)
+        {
+            foreach (var VARIABLE in elements)
+            {
+                if (VARIABLE.element == element)
+                {
+                    return Array.Empty<string>();
+                }
+
+                if (VARIABLE.childs is null || VARIABLE.childs.Count is 0)
+                {
+                    continue;
+                }
+
+                ChildOptions child = VARIABLE.childs.Find(x => x.element == element);
+                if (child is null)
+                {
+                    continue;
+                }
+
+                return child.path.ToArray();
+            }
+
+            return Array.Empty<string>();
+        }
+
+        public Element GetParentElement(Element element)
+        {
+            foreach (var VARIABLE in elements)
+            {
+                if (VARIABLE.childs is null || VARIABLE.childs.Count is 0)
+                {
+                    continue;
+                }
+
+                ChildOptions child = VARIABLE.childs.Find(x => x.element == element);
+                if (child is null)
+                {
+                    continue;
+                }
+
+                return VARIABLE.element;
+            }
+
+            return Element.None;
+        }
+
+        public ChildOptions[] GetChildList(Element element)
+        {
+            foreach (var VARIABLE in elements)
+            {
+                if (VARIABLE.element == element)
+                {
+                    return VARIABLE.childs.ToArray();
+                }
             }
 
             return default;
