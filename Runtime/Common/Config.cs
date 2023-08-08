@@ -9,13 +9,13 @@ namespace ZyGame.Dressup
     /// </summary>
     public enum Element
     {
-        None = 0,
+        [Header("None")] None = 0,
 
         //===============头部============
         /// <summary>
         /// 头部
         /// </summary>
-        Head = 19,
+        [Header("头部")] Head = 19,
 
         /// <summary>
         /// 腮红

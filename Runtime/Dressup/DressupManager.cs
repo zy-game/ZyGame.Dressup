@@ -24,6 +24,11 @@ namespace ZyGame.Dressup
         public uint version;
 
         /// <summary>
+        /// 初始骨架
+        /// </summary>
+        public string skeleton;
+
+        /// <summary>
         /// 骨架crc
         /// </summary>
         public uint crc;
@@ -92,14 +97,14 @@ namespace ZyGame.Dressup
             this.AssetLoader = options.assetLoader;
             this.OpenFileCallback = options.OpenFileCallback;
             this.dressups = new Dictionary<Element, DressupComponent>();
-            ElementGroupData groupData = groupDatas.Find(x => x.name == options.group);
-            if (groupData is null)
-            {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
-                return;
-            }
+            // ElementGroupData groupData = groupDatas.Find(x => x.name == options.group);
+            // if (groupData is null)
+            // {
+            //     Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
+            //     return;
+            // }
 
-            this.AssetLoader.LoadAsync<GameObject>(groupData.skelton, options.version, options.crc, LoadSkeletonCompletion);
+            this.AssetLoader.LoadAsync<GameObject>(options.skeleton, options.version, options.crc, LoadSkeletonCompletion);
         }
 
         public bool IsChild(Element element)
