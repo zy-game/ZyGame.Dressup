@@ -373,18 +373,21 @@ namespace ZyGame.Editor.Avatar
                         DressupEditorOptions.Save();
                     }
 
-                    GroupOptions groupOptions = DressupEditorOptions.instance.options.Find(x => x.name == dressup.group);
-                    if (groupOptions is not null)
+                    if (dressup.icon == null)
                     {
-                        ElementOptions elementOptions = groupOptions.GetElement(dressup.element);
-                        if (elementOptions is not null)
+                        GroupOptions groupOptions = DressupEditorOptions.instance.options.Find(x => x.name == dressup.group);
+                        if (groupOptions is not null)
                         {
-                            if (elementOptions.icon == null)
+                            ElementOptions elementOptions = groupOptions.GetElement(dressup.element);
+                            if (elementOptions is not null)
                             {
-                                elementOptions.icon = GetPreviewTexture((GameObject)elementOptions.target);
-                            }
+                                if (elementOptions.icon == null)
+                                {
+                                    elementOptions.icon = GetPreviewTexture((GameObject)elementOptions.target);
+                                }
 
-                            dressup.icon = elementOptions.icon;
+                                dressup.icon = elementOptions.icon;
+                            }
                         }
                     }
 
