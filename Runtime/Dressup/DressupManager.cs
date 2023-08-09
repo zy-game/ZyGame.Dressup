@@ -74,10 +74,7 @@ namespace ZyGame.Dressup
         public GameObject boneRoot { get; private set; }
         public GameObject skinRoot { get; private set; }
         public GameObject gameObject { get; private set; }
-
         public DressupOptions options { get; private set; }
-
-        // public List<NodeData> nodeList { get; private set; }
         public List<Element> normalList { get; private set; }
         public List<GroupInfo> groupDatas { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
@@ -105,7 +102,7 @@ namespace ZyGame.Dressup
             this.group = options.group;
             this.camera = options.camera;
             this.Notify = options.Notify;
-            // this.nodeList = options.nodeList;
+            this.address = options.address;
             this.normalList = options.normals;
             this.groupDatas = options.groupDatas;
             this.AssetLoader = options.assetLoader;
@@ -208,6 +205,7 @@ namespace ZyGame.Dressup
             {
                 if (ex != null)
                 {
+                    Debug.LogError(ex);
                     Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.UPLOAD_AVATAR_ICON_FAIL);
                     return;
                 }
@@ -228,7 +226,7 @@ namespace ZyGame.Dressup
 
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(config);
                 Notify(EventNames.EXPORT_AVATAR_CONFIG_COMPLATED, json);
-            });
+            }).StartCoroutine();
         }
 
         public DressupData GetElementData(Element element)
@@ -279,7 +277,6 @@ namespace ZyGame.Dressup
             }
         }
 
-
         public IEnumerator SetElementData(List<DressupData> elements)
         {
             for (int i = elements.Count - 1; i >= 0; i--)
@@ -295,57 +292,51 @@ namespace ZyGame.Dressup
                     groupOptions = groupDatas.Find(x => x.name == dressupData.model_name);
                 }
 
-                if (!components.TryGetValue(dressupData.element, out DressupComponent component))
+                string modleName = Path.GetFileNameWithoutExtension(dressupData.model);
+                DressGroup group = basicList.Find(x => x.name == modleName);
+                if (group is null)
                 {
-                    string modleName = Path.GetFileNameWithoutExtension(dressupData.model);
-                    DressGroup group = basicList.Find(x => x.name == modleName);
-                    if (group is null)
+                    ClearElement(dressupData.element);
+                    yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args =>
                     {
-                        yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args =>
+                        args.SetParent(gameObject, Vector3.zero, Vector3.zero, Vector3.one);
+                        basicList.Add(group = new DressGroup()
                         {
-                            args.SetParent(gameObject, Vector3.zero, Vector3.zero, Vector3.one);
-                            basicList.Add(group = new DressGroup()
-                            {
-                                name = modleName,
-                                gameObject = args,
-                                elements = new List<Element>()
-                            });
+                            name = modleName,
+                            gameObject = args,
+                            elements = new List<Element>()
                         });
-                    }
-
-                    if (!groupOptions.IsChild(dressupData.element))
-                    {
-                        group.elements.Add(dressupData.element);
-                        components.Add(dressupData.element, component = new DressupComponent(this, group.gameObject));
-                    }
-                    else
-                    {
-                        string[] pathList = groupOptions.GetChildPath(dressupData.element);
-                        List<GameObject> children = new List<GameObject>();
-                        foreach (var VARIABLE in pathList)
-                        {
-                            Transform transform = group.gameObject.transform.Find(VARIABLE);
-                            if (transform == null)
-                            {
-                                Debug.Log(group.name + " Not children gameobject:" + VARIABLE);
-                                continue;
-                            }
-
-                            children.Add(transform.gameObject);
-                        }
-
-                        group.elements.Add(dressupData.element);
-                        components.Add(dressupData.element, component = new DressupComponent(this, children.ToArray()));
-                    }
+                    });
                 }
 
-                // if (IsChild(dressupData.element) is false)
-                // {
-                //     if (component.data is null || component.data.model.Equals(dressupData.model) is false)
-                //     {
-                //         yield return component.DressupGameObject(dressupData);
-                //     }
-                // }
+                if (!components.TryGetValue(dressupData.element, out DressupComponent component))
+                {
+                    components.Add(dressupData.element, component = new DressupComponent(this));
+                }
+
+                if (!groupOptions.IsChild(dressupData.element))
+                {
+                    group.elements.Add(dressupData.element);
+                    component.SetChild(group.gameObject);
+                }
+                else
+                {
+                    string[] pathList = groupOptions.GetChildPath(dressupData.element);
+                    List<GameObject> children = new List<GameObject>();
+                    foreach (var VARIABLE in pathList)
+                    {
+                        Transform transform = group.gameObject.transform.Find(VARIABLE);
+                        if (transform == null)
+                        {
+                            Debug.Log(group.name + " Not children gameobject:" + VARIABLE);
+                            continue;
+                        }
+
+                        children.Add(transform.gameObject);
+                    }
+
+                    component.SetChild(children.ToArray());
+                }
 
                 if (component is null)
                 {

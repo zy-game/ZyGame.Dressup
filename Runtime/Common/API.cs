@@ -215,17 +215,17 @@ namespace ZyGame.Dressup
             None,
 
             /// <summary>
-            /// “—∑¢≤º
+            /// Â∑≤ÂèëÂ∏É
             /// </summary>
             Publish,
 
             /// <summary>
-            /// ªÊ÷∆÷–
+            /// ÁªòÂà∂‰∏≠
             /// </summary>
             Drafts,
 
             /// <summary>
-            /// …Û∫À÷–
+            /// ÂÆ°Ê†∏‰∏≠
             /// </summary>
             Process,
         }
