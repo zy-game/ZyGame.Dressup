@@ -55,11 +55,13 @@ namespace ZyGame.Drawing
         public Element element { get; set; }
         public DrawingData current { get; set; }
         public Texture2D original { get; set; }
+
         public RenderTexture render { get; set; }
-        public DressupComponent component { get; set; }
+
+        // public DressupComponent component { get; set; }
         public RenderTexture drawingRender { get; set; }
         public PaintBrush brush { get; set; }
-        public GameObject gameObject => component.gameObject == null ? component.childs[0] : component.gameObject;
+        public GameObject gameObject { get; set; }
         public List<DrawingData> layers { get; set; } = new List<DrawingData>();
 
         private Vector3 last_mouse_position = Vector3.zero;
@@ -76,11 +78,36 @@ namespace ZyGame.Drawing
         private DressupManager _dressupManager;
 
 
-        public DressupDrawing(DressupManager dressupManager)
+        public DressupDrawing(Element element, DressupManager dressupManager)
         {
+            this.element = element;
             _dressupManager = dressupManager;
         }
 
+
+        public void InitializedDrawing(string id, Element element)
+        {
+            if (_dressupManager.HaveDressup(element) is false)
+            {
+                _dressupManager.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_FIND_THE_ELEMENT_DATA + " With Initialized");
+                return;
+            }
+
+            this.id = id;
+            this.element = element;
+            this.gameObject = _dressupManager.GetDressupGameObject(element);
+            original = _dressupManager.GetTexture2D(element);
+            render = new RenderTexture(original.width, original.height, 0);
+            drawingRender = new RenderTexture(original.width, original.height, 0);
+            render.name = "render";
+            drawingRender.name = "drawing";
+            render.DrawTexture(new Rect(0, 0, original.width, original.height), original, null);
+            _dressupManager.SetTexture2D(element, render);
+            _dressupManager.DisableElement((int)Element.None);
+            _dressupManager.EnableElement(element);
+            gameObject.GenericMeshCollider();
+            Apply();
+        }
 
         public void Forwad()
         {
@@ -161,7 +188,7 @@ namespace ZyGame.Drawing
             MemoryStream stream = new MemoryStream();
             BinaryWriter writer = new BinaryWriter(stream);
             writer.Write((byte)element);
-            writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(component.data));
+            writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(_dressupManager.GetElementData(element)));
             writer.Write((byte)layers.Count);
             for (int i = 0; i < layers.Count; i++)
             {
@@ -171,7 +198,7 @@ namespace ZyGame.Drawing
             string address = _dressupManager.address;
             string user = _dressupManager.user;
             int pid = _dressupManager.pid;
-            API.UploadElementData(address, user, pid, id, name, stream.ToArray(), component.gameObject, component.data, API.PublishState.Drafts, args =>
+            API.UploadElementData(address, user, pid, id, name, stream.ToArray(), gameObject, _dressupManager.GetElementData(element), API.PublishState.Drafts, args =>
             {
                 if (args == null)
                 {
@@ -199,7 +226,7 @@ namespace ZyGame.Drawing
             string address = _dressupManager.address;
             string user = _dressupManager.user;
             int pid = _dressupManager.pid;
-            API.UploadElementData(address, user, pid, id, name, publishTexture.EncodeToPNG(), component.gameObject, component.data, API.PublishState.Process, args =>
+            API.UploadElementData(address, user, pid, id, name, publishTexture.EncodeToPNG(), gameObject, _dressupManager.GetElementData(element), API.PublishState.Process, args =>
             {
                 if (args == null)
                 {
@@ -538,7 +565,7 @@ namespace ZyGame.Drawing
         {
             // Client.Tools.RemoveCallback(OnUpdate);
             this.gameObject.DestroyMeshCollider();
-            this.component.SetTexture2D(original);
+            this._dressupManager.SetTexture2D(element, original);
             _dressupManager.EnableElement((int)Element.None);
         }
     }

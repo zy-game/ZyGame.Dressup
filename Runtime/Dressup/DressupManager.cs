@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Networking;
+using ZyGame.Drawing;
 using Object = UnityEngine.Object;
 
 namespace ZyGame.Dressup
@@ -78,12 +80,16 @@ namespace ZyGame.Dressup
         public List<Element> normalList { get; private set; }
         public List<GroupInfo> groupDatas { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
+
         public Action<string, object> Notify { get; private set; }
-        public Dictionary<Element, DressupComponent> components { get; }
+
+        // public Dictionary<Element, DressupComponent> components { get; }
         private List<DressGroup> basicList { get; set; }
         public Action OpenFileCallback { get; private set; }
         public Action<byte[]> LoadFileCompeltion { get; set; }
         public GroupInfo groupOptions { get; private set; }
+
+        private Dictionary<Element, DressupData> dataList = new Dictionary<Element, DressupData>();
         private const int COMBINE_TEXTURE_MAX = 2048;
         private const string COMBINE_DIFFUSE_TEXTURE = "_MainTex";
 
@@ -107,7 +113,7 @@ namespace ZyGame.Dressup
             this.groupDatas = options.groupDatas;
             this.AssetLoader = options.assetLoader;
             this.OpenFileCallback = options.OpenFileCallback;
-            this.components = new Dictionary<Element, DressupComponent>();
+            // this.components = new Dictionary<Element, DressupComponent>();
             this.groupOptions = groupDatas.Find(x => x.name == this.group);
             this.basicList = new List<DressGroup>();
             this.AssetLoader.LoadAsync<GameObject>(options.skeleton, options.version, options.crc, LoadSkeletonCompletion);
@@ -132,23 +138,164 @@ namespace ZyGame.Dressup
             Notify(EventNames.INITIALIZED_COMPLATED_EVENT, string.Empty);
         }
 
+        public bool HaveDressup(Element element)
+        {
+            return dataList.ContainsKey(element);
+        }
+
+        public GameObject GetDressupGameObject(Element element)
+        {
+            GameObject result = default;
+            DressGroup dressGroup = basicList.Find(x => x.elements.Contains(element));
+            if (dressGroup is null)
+            {
+                return result;
+            }
+
+            if (!groupOptions.IsChild(element))
+            {
+                result = dressGroup.gameObject;
+            }
+            else
+            {
+                string[] pathList = groupOptions.GetChildPath(element);
+                List<GameObject> children = new List<GameObject>();
+                foreach (var VARIABLE in pathList)
+                {
+                    Transform transform = dressGroup.gameObject.transform.Find(VARIABLE);
+                    if (transform == null)
+                    {
+                        Debug.Log(dressGroup.name + " Not children gameobject:" + VARIABLE);
+                        continue;
+                    }
+
+                    children.Add(transform.gameObject);
+                }
+
+                result = children.FirstOrDefault();
+            }
+
+            return result;
+        }
+
+        public Texture2D GetTexture2D(Element element)
+        {
+            Texture2D result = default;
+            DressGroup dressGroup = basicList.Find(x => x.elements.Contains(element));
+            if (dressGroup is null)
+            {
+                return result;
+            }
+
+            if (!groupOptions.IsChild(element))
+            {
+                SkinnedMeshRenderer skinnedMeshRenderer = dressGroup.gameObject.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (skinnedMeshRenderer is null)
+                {
+                    return result;
+                }
+
+                result = (Texture2D)skinnedMeshRenderer.sharedMaterial.mainTexture;
+            }
+            else
+            {
+                string[] pathList = groupOptions.GetChildPath(element);
+                List<GameObject> children = new List<GameObject>();
+                foreach (var VARIABLE in pathList)
+                {
+                    Transform transform = dressGroup.gameObject.transform.Find(VARIABLE);
+                    if (transform == null)
+                    {
+                        Debug.Log(dressGroup.name + " Not children gameobject:" + VARIABLE);
+                        continue;
+                    }
+
+                    children.Add(transform.gameObject);
+                }
+
+                GameObject temp = children.FirstOrDefault();
+                if (temp is null)
+                {
+                    return result;
+                }
+
+                SkinnedMeshRenderer skinnedMeshRenderer = temp.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (skinnedMeshRenderer is null)
+                {
+                    return result;
+                }
+
+                result = (Texture2D)skinnedMeshRenderer.sharedMaterial.mainTexture;
+            }
+
+            return result;
+        }
+
+        public void SetTexture2D(Element element, Texture render)
+        {
+            DressGroup dressGroup = basicList.Find(x => x.elements.Contains(element));
+            if (dressGroup is null)
+            {
+                return;
+            }
+
+            if (!groupOptions.IsChild(element))
+            {
+                SkinnedMeshRenderer skinnedMeshRenderer = dressGroup.gameObject.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (skinnedMeshRenderer is null)
+                {
+                    return;
+                }
+
+#if UNITY_EDITOR
+                skinnedMeshRenderer.sharedMaterial.shader = Shader.Find("Unlit/Texture");
+#endif
+                skinnedMeshRenderer.sharedMaterial.mainTexture = render;
+            }
+            else
+            {
+                string[] pathList = groupOptions.GetChildPath(element);
+                List<GameObject> children = new List<GameObject>();
+                foreach (var VARIABLE in pathList)
+                {
+                    Transform transform = dressGroup.gameObject.transform.Find(VARIABLE);
+                    if (transform == null)
+                    {
+                        Debug.Log(dressGroup.name + " Not children gameobject:" + VARIABLE);
+                        continue;
+                    }
+
+                    children.Add(transform.gameObject);
+                }
+
+                GameObject temp = children.FirstOrDefault();
+                if (temp is null)
+                {
+                    return;
+                }
+
+                SkinnedMeshRenderer skinnedMeshRenderer = temp.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (skinnedMeshRenderer is null)
+                {
+                    return;
+                }
+#if UNITY_EDITOR
+                skinnedMeshRenderer.sharedMaterial.shader = Shader.Find("Unlit/Texture");
+#endif
+                skinnedMeshRenderer.sharedMaterial.mainTexture = render;
+            }
+        }
 
         public void ShowInView(Element element)
         {
-            if (!components.TryGetValue(element, out DressupComponent component))
+            DressGroup group = basicList.Find(x => x.elements.Contains(element));
+            if (group is null)
             {
                 camera?.ToViewCenter(gameObject);
                 return;
             }
 
-            if (component.gameObject == null)
-            {
-                camera?.ToViewCenter(component.childs[0]);
-            }
-            else
-            {
-                camera?.ToViewCenter(component.gameObject);
-            }
+            camera?.ToViewCenter(group.gameObject);
         }
 
         public void ExportConfig(string configName)
@@ -171,15 +318,15 @@ namespace ZyGame.Dressup
                 config.group = this.group;
                 config.icon = response.data.url;
                 config.md5 = response.data.md5;
-                foreach (var component in components.Values)
+                foreach (var component in dataList.Values)
                 {
-                    if (component.data is null)
+                    if (component is null)
                     {
                         Debug.Log("empty element data");
                         continue;
                     }
 
-                    config.AddConfig(component.data);
+                    config.AddConfig(component);
                 }
 
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(config);
@@ -189,17 +336,7 @@ namespace ZyGame.Dressup
 
         public DressupData GetElementData(Element element)
         {
-            if (components.TryGetValue(element, out DressupComponent component))
-            {
-                return component.data;
-            }
-
-            return default;
-        }
-
-        public DressupComponent GetElementComponent(Element element)
-        {
-            if (components.TryGetValue(element, out DressupComponent component))
+            if (dataList.TryGetValue(element, out DressupData component))
             {
                 return component;
             }
@@ -226,7 +363,7 @@ namespace ZyGame.Dressup
                 }
 
                 ClearElement(Element.None);
-                SetElementData(tempConfig.items).StartCoroutine(Notify, EventNames.IMPORT_CONFIG_COMPLATED, default(object));
+                SetElementData(tempConfig.items, () => Notify(EventNames.IMPORT_CONFIG_COMPLATED, default(object)));
             }
             catch (Exception e)
             {
@@ -239,23 +376,18 @@ namespace ZyGame.Dressup
         {
             if (element is Element.None)
             {
-                foreach (var item in components.Values)
-                {
-                    item.Dispose();
-                }
-
                 foreach (var VARIABLE in basicList)
                 {
                     GameObject.DestroyImmediate(VARIABLE.gameObject);
                 }
 
-                components.Clear();
+                dataList.Clear();
                 basicList.Clear();
                 Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
                 return;
             }
 
-            if (!components.TryGetValue(element, out DressupComponent component))
+            if (!dataList.TryGetValue(element, out DressupData component))
             {
                 return;
             }
@@ -271,13 +403,41 @@ namespace ZyGame.Dressup
                 }
             }
 
-            component.Dispose();
-            components.Remove(element);
+            dataList.Remove(element);
             Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
         }
 
-        public IEnumerator SetElementData(List<DressupData> elements)
+        private bool isRunning = false;
+        private Queue<TaskData> taskList = new Queue<TaskData>();
+
+        class TaskData
         {
+            public Action callback;
+            public List<DressupData> elements;
+        }
+
+        public void SetElementData(List<DressupData> elements, Action action)
+        {
+            taskList.Enqueue(new TaskData() { elements = elements, callback = action });
+            if (isRunning)
+            {
+                return;
+            }
+
+            SetElementDataTask().StartCoroutine();
+        }
+
+        private IEnumerator SetElementDataTask()
+        {
+            if (taskList.Count is 0)
+            {
+                yield break;
+            }
+
+            isRunning = true;
+            TaskData task = taskList.Dequeue();
+            List<DressupData> elements = task.elements;
+
             for (int i = elements.Count - 1; i >= 0; i--)
             {
                 DressupData dressupData = elements[i];
@@ -292,66 +452,58 @@ namespace ZyGame.Dressup
                 }
 
                 string modleName = Path.GetFileNameWithoutExtension(dressupData.model);
-                DressGroup group = basicList.Find(x => x.name == modleName);
-                if (group is not null && group.name != modleName)
-                {
-                    ClearElement(dressupData.element);
-                    group = null;
-                }
-
-                if (group is null)
+                if (!dataList.TryGetValue(dressupData.element, out DressupData component))
                 {
                     yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args =>
                     {
                         args.SetParent(gameObject, Vector3.zero, Vector3.zero, Vector3.one);
-                        basicList.Add(group = new DressGroup()
+                        basicList.Add(new DressGroup()
                         {
                             name = modleName,
                             gameObject = args,
-                            elements = new List<Element>()
+                            elements = new List<Element>() { dressupData.element }
                         });
                     });
                 }
-
-
-                if (!components.TryGetValue(dressupData.element, out DressupComponent component))
+                else
                 {
-                    components.Add(dressupData.element, component = new DressupComponent(this));
-                    group.elements.Add(dressupData.element);
-                    if (!groupOptions.IsChild(dressupData.element))
+                    DressGroup group = basicList.Find(x => x.name == modleName);
+                    if (group is null)
                     {
-                        component.SetChild(group.gameObject);
+                        ClearElement(dressupData.element);
+                        yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args =>
+                        {
+                            args.SetParent(gameObject, Vector3.zero, Vector3.zero, Vector3.one);
+                            basicList.Add(new DressGroup()
+                            {
+                                name = modleName,
+                                gameObject = args,
+                                elements = new List<Element>() { dressupData.element }
+                            });
+                        });
+                    }
+                }
+
+                if (component is null || component.texture.Equals(dressupData.texture) is false)
+                {
+                    if (dressupData.publish_status == 2)
+                    {
+                        yield return CombineDrawingData(dressupData);
                     }
                     else
                     {
-                        string[] pathList = groupOptions.GetChildPath(dressupData.element);
-                        List<GameObject> children = new List<GameObject>();
-                        foreach (var VARIABLE in pathList)
-                        {
-                            Transform transform = group.gameObject.transform.Find(VARIABLE);
-                            if (transform == null)
-                            {
-                                Debug.Log(group.name + " Not children gameobject:" + VARIABLE);
-                                continue;
-                            }
-
-                            children.Add(transform.gameObject);
-                        }
-
-                        component.SetChild(children.ToArray());
+                        yield return LoadAsync<Texture2D>(dressupData.texture, 0, 0, args => { SetTexture2D(dressupData.element, args); });
                     }
                 }
 
-                if (component.data is null || component.data.texture.Equals(dressupData.texture) is false)
-                {
-                    yield return component.DressupTexture(dressupData);
-                }
-
-                component.data = dressupData;
+                dataList[dressupData.element] = dressupData;
             }
 
             ShowInView(Element.None);
+            isRunning = false;
+            task.callback?.Invoke();
             Notify(EventNames.SET_ELEMENT_DATA_COMPLATED, default(object));
+            SetElementDataTask().StartCoroutine();
         }
 
         private IEnumerator LoadAsync<T>(string path, uint version, uint crc, Action<T> action) where T : Object
@@ -365,6 +517,58 @@ namespace ZyGame.Dressup
             });
             yield return new WaitUntil(() => m);
             action(result);
+        }
+
+        public static Texture2D CombineTexture(List<DrawingData> layers, Texture2D org)
+        {
+            RenderTexture render = new RenderTexture(layers[0].width, layers[0].height, 0, RenderTextureFormat.Default);
+            render.Clear();
+            render.DrawTexture(new Rect(0, 0, org.width, org.height), org, null);
+            for (int i = 0; i < layers.Count; i++)
+            {
+                render.DrawTexture(new Rect(0, 0, layers[i].width, layers[i].height), layers[i].texture, null);
+            }
+
+            return render.ReadTexture2D();
+        }
+
+        IEnumerator CombineDrawingData(DressupData data)
+        {
+            UnityWebRequest request = UnityWebRequest.Get(data.texture);
+            yield return request.SendWebRequest();
+            if (request.isDone is false || request.result is not UnityWebRequest.Result.Success)
+            {
+                Debug.LogError(request.error);
+                yield break;
+            }
+
+            List<DrawingData> layers = new List<DrawingData>();
+            using (BinaryReader reader = new BinaryReader(new MemoryStream(request.downloadHandler.data)))
+            {
+                Element element = (Element)reader.ReadByte();
+                DressupData temp = Newtonsoft.Json.JsonConvert.DeserializeObject<DressupData>(reader.ReadString());
+                yield return LoadAsync<Texture2D>(temp.texture, 0, 0, args =>
+                {
+                    if (args == null)
+                    {
+                        Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_THE_ELEMENT_ASSET, temp.texture) + 4);
+                        return;
+                    }
+
+                    byte layerCount = reader.ReadByte();
+                    for (int j = 0; j < layerCount; j++)
+                    {
+                        layers.Add(DrawingData.GenerateToBinary(reader));
+                    }
+
+                    if (layers.Count <= 0)
+                    {
+                        return;
+                    }
+
+                    SetTexture2D(data.element, CombineTexture(layers, args));
+                });
+            }
         }
 
         public void Combine()
@@ -456,10 +660,7 @@ namespace ZyGame.Dressup
                 combineInstances[i].mesh.uv = oldUV[i];
             }
 
-            foreach (var item in components.Values)
-            {
-                item.SetActiveState(false);
-            }
+            basicList.ForEach(x => x.gameObject.SetActive(false));
         }
 
         public void UploadAsset(Element element)
@@ -468,15 +669,15 @@ namespace ZyGame.Dressup
             {
                 LoadFileCompeltion -= Runnable_OpenFileComplated;
 
-                if (!this.components.TryGetValue(element, out DressupComponent component))
+                if (!this.dataList.TryGetValue(element, out DressupData component))
                 {
                     return;
                 }
 
                 Texture2D texture = new Texture2D(512, 512);
                 texture.LoadImage(bytes);
-                component.SetTexture2D(texture);
-                API.UploadElementData(address, user, pid, Guid.NewGuid().ToString(), string.Empty, bytes, component.gameObject, component.data, API.PublishState.Process, args =>
+                SetTexture2D(element, texture);
+                API.UploadElementData(address, user, pid, Guid.NewGuid().ToString(), string.Empty, bytes, GetDressupGameObject(element), component, API.PublishState.Process, args =>
                 {
                     if (args == null)
                     {
@@ -503,14 +704,14 @@ namespace ZyGame.Dressup
                     return;
                 }
 
-                if (!this.components.TryGetValue(element, out DressupComponent component))
+                if (!this.dataList.TryGetValue(element, out DressupData component))
                 {
                     return;
                 }
 
                 Texture2D texture = new Texture2D(512, 512);
                 texture.LoadImage(bytes);
-                component.SetTexture2D(texture);
+                SetTexture2D(element, texture);
                 ShowInView(element);
             }
 
@@ -522,21 +723,14 @@ namespace ZyGame.Dressup
         {
             if (element == Element.None)
             {
-                foreach (var VARIABLE in components.Values)
+                List<DressGroup> groups = new List<DressGroup>();
+                foreach (var VARIABLE in normalList)
                 {
-                    if (normalList.Contains(VARIABLE.data.element))
-                    {
-                        continue;
-                    }
-
-                    VARIABLE.SetActiveState(false);
+                    groups.AddRange(basicList.Where(x => x.elements.Contains(VARIABLE)));
                 }
 
-                return;
-            }
-
-            if (!this.components.TryGetValue(element, out DressupComponent component))
-            {
+                basicList.ForEach(x => x.gameObject.SetActive(false));
+                groups.ForEach(x => x.gameObject.SetActive(true));
                 return;
             }
 
@@ -545,37 +739,44 @@ namespace ZyGame.Dressup
                 return;
             }
 
-            component.SetActiveState(false);
+            DressGroup dressGroup = basicList.Find(x => x.elements.Contains(element));
+            if (!groupOptions.IsChild(element))
+            {
+                dressGroup.gameObject.SetActive(false);
+            }
+            else
+            {
+                string[] pathList = groupOptions.GetChildPath(element);
+                List<GameObject> children = new List<GameObject>();
+                foreach (var VARIABLE in pathList)
+                {
+                    Transform transform = dressGroup.gameObject.transform.Find(VARIABLE);
+                    if (transform == null)
+                    {
+                        continue;
+                    }
+
+                    transform.gameObject.SetActive(false);
+                }
+            }
         }
 
         public void EnableElement(Element element)
         {
             if (element == Element.None)
             {
-                foreach (var VARIABLE in components.Values)
-                {
-                    VARIABLE.SetActiveState(true);
-                }
-
+                basicList.ForEach(x => x.gameObject.SetActive(true));
                 return;
             }
 
-            if (!this.components.TryGetValue(element, out DressupComponent component))
-            {
-                return;
-            }
-
-            component.SetActiveState(true);
+            GetDressupGameObject(element)?.SetActive(true);
         }
 
         public void Dispose()
         {
-            foreach (var item in components.Values)
-            {
-                item.Dispose();
-            }
-
-            components.Clear();
+            dataList.Clear();
+            basicList.ForEach(x => GameObject.DestroyImmediate(x.gameObject));
+            basicList.Clear();
             GameObject.DestroyImmediate(this.gameObject);
             group = string.Empty;
             options = null;
