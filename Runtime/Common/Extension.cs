@@ -267,7 +267,6 @@ namespace ZyGame
             Bounds meshBound = GetBoundingBox(gameObject); //renderer.sharedMesh.bounds;
             // renderer.sharedMesh.RecalculateBounds();
             camera.transform.position = new Vector3(0, meshBound.center.y, 2);
-            Debug.Log(camera.transform.position);
             float distance = Vector3.Distance(camera.transform.position, meshBound.center);
             camera.fieldOfView = 2.0f * Mathf.Atan(Mathf.Max(meshBound.size.y, meshBound.size.x, meshBound.size.z) * 0.55f / distance) * Mathf.Rad2Deg;
             return new Vector3(0, meshBound.center.y, 2);

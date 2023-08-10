@@ -339,6 +339,22 @@ namespace ZyGame.Editor.Avatar
                             DressupEditorOptions.Save();
                         }
 
+                        if (temp >= 0)
+                        {
+                            GroupOptions groupOptions = DressupEditorOptions.instance.options.Find(x => x.name == dressup.group);
+                            List<ElementOptions> elements = groupOptions.elements.Where(x => x.element == dressup.element).ToList();
+                            string[] eles = elements.Select(x => x.target.name).ToArray();
+                            int bIndex = elements.FindIndex(x => x.target == dressup.bind.target);
+                            GUILayout.Label("绑定模型：", GUILayout.Width(50));
+                            int temp2 = EditorGUILayout.Popup(bIndex, eles, EditorStyles.toolbarDropDown);
+                            if (temp2 != bIndex)
+                            {
+                                dressup.bind = elements[temp2];
+                                DressupEditorOptions.Save();
+                            }
+                        }
+
+
                         GUILayout.BeginVertical();
                         {
                             GUILayout.Space(5);
@@ -507,8 +523,8 @@ namespace ZyGame.Editor.Avatar
                     return;
                 }
 
-                ElementOptions elementOptions = groupOptions.GetElement(optionsData.element);
-                if (elementOptions is null)
+                // ElementOptions elementOptions = groupOptions.GetElement(optionsData.element);
+                if (optionsData.bind is null)
                 {
                     EditorUtility.DisplayDialog("Errored", "没有找到对应的部件配置！Element:" + optionsData.element + " Name:" + optionsData.texture.name, "Ok");
                     return;
@@ -541,17 +557,8 @@ namespace ZyGame.Editor.Avatar
                 //todo 移动部件ICON
                 if (optionsData.icon == null)
                 {
-                    if (elementOptions.icon == null)
-                    {
-                        elementOptions.icon = GetPreviewTexture((GameObject)elementOptions.target);
-                    }
-
-                    optionsData.icon = elementOptions.icon;
-                    if (optionsData.icon == null)
-                    {
-                        EditorUtility.DisplayDialog("Errored", "部件没有指定Icon！Element:" + optionsData.element + " Name:" + optionsData.texture.name, "Ok");
-                        return;
-                    }
+                    EditorUtility.DisplayDialog("Errored", "部件没有指定Icon！Element:" + optionsData.element + " Name:" + optionsData.texture.name, "Ok");
+                    return;
                 }
 
                 texture2D = new Texture2D(optionsData.icon.width, optionsData.icon.height, TextureFormat.RGBA32, false);
@@ -581,7 +588,7 @@ namespace ZyGame.Editor.Avatar
                     is_normal = DressupEditorOptions.instance.normals.Contains(optionsData.element),
                     element = (int)optionsData.element,
                     group = optionsData.group,
-                    model = $"{optionsData.group}/bundles/{GetAssetPath(elementOptions.target)}",
+                    model = $"{optionsData.group}/bundles/{GetAssetPath(optionsData.bind.target)}",
                     texture = optionsData.texture == null ? string.Empty : $"{optionsData.group}/element/{GetAssetPath(optionsData.texture)}.png",
                     version = 0,
                     crc = 0

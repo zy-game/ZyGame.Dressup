@@ -121,7 +121,7 @@ namespace ZyGame.Dressup
                         return;
                     }
 
-                    SetTexture2D(Combines(layers, texture));
+                    SetTexture2D(Combines(layers, args));
                 });
             }
         }

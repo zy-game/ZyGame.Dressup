@@ -147,6 +147,19 @@ namespace ZyGame.Dressup
             }
         }
 
+        public static IEnumerator Download(string url, Action<byte[]> complete)
+        {
+            UnityWebRequest request = UnityWebRequest.Get(url);
+            yield return request.SendWebRequest();
+            if (request.isDone is false || request.result is not UnityWebRequest.Result.Success)
+            {
+                Debug.Log(request.error);
+                yield break;
+            }
+
+            complete?.Invoke(request.downloadHandler.data);
+        }
+
         public static IEnumerator UploadAsset(string address, string user, int pid, RequestCreateFileData requestCreate, byte[] bytes, Action<UploadAssetResponse, Exception> callback)
         {
             string postData = Newtonsoft.Json.JsonConvert.SerializeObject(requestCreate);

@@ -164,6 +164,7 @@ namespace ZyGame.Editor.Avatar
         public Texture2D icon;
         public Element element;
         public Texture2D texture;
+        public ElementOptions bind;
     }
 
     class OutDressupData

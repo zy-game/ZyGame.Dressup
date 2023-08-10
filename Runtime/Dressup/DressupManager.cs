@@ -133,48 +133,6 @@ namespace ZyGame.Dressup
         }
 
 
-        public void ClearElement(Element element)
-        {
-            if (element is Element.None)
-            {
-                foreach (var item in components.Values)
-                {
-                    item.Dispose();
-                }
-
-                foreach (var VARIABLE in basicList)
-                {
-                    GameObject.DestroyImmediate(VARIABLE.gameObject);
-                }
-
-                components.Clear();
-                basicList.Clear();
-                Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
-                return;
-            }
-
-            if (!components.TryGetValue(element, out DressupComponent component))
-            {
-                return;
-            }
-
-            DressGroup group = basicList.Find(x => x.elements.Contains(element));
-            if (group != null)
-            {
-                group.elements.Remove(element);
-                if (group.elements.Count == 0)
-                {
-                    GameObject.DestroyImmediate(group.gameObject);
-                    basicList.Remove(group);
-                }
-            }
-
-            component.Dispose();
-            components.Remove(element);
-            Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
-        }
-
-
         public void ShowInView(Element element)
         {
             if (!components.TryGetValue(element, out DressupComponent component))
@@ -277,6 +235,47 @@ namespace ZyGame.Dressup
             }
         }
 
+        public void ClearElement(Element element)
+        {
+            if (element is Element.None)
+            {
+                foreach (var item in components.Values)
+                {
+                    item.Dispose();
+                }
+
+                foreach (var VARIABLE in basicList)
+                {
+                    GameObject.DestroyImmediate(VARIABLE.gameObject);
+                }
+
+                components.Clear();
+                basicList.Clear();
+                Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
+                return;
+            }
+
+            if (!components.TryGetValue(element, out DressupComponent component))
+            {
+                return;
+            }
+
+            DressGroup group = basicList.Find(x => x.elements.Contains(element));
+            if (group != null)
+            {
+                group.elements.Remove(element);
+                if (group.elements.Count == 0)
+                {
+                    GameObject.DestroyImmediate(group.gameObject);
+                    basicList.Remove(group);
+                }
+            }
+
+            component.Dispose();
+            components.Remove(element);
+            Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
+        }
+
         public IEnumerator SetElementData(List<DressupData> elements)
         {
             for (int i = elements.Count - 1; i >= 0; i--)
@@ -294,9 +293,14 @@ namespace ZyGame.Dressup
 
                 string modleName = Path.GetFileNameWithoutExtension(dressupData.model);
                 DressGroup group = basicList.Find(x => x.name == modleName);
-                if (group is null)
+                if (group is not null && group.name != modleName)
                 {
                     ClearElement(dressupData.element);
+                    group = null;
+                }
+
+                if (group is null)
+                {
                     yield return LoadAsync<GameObject>(dressupData.model, 0, 0, args =>
                     {
                         args.SetParent(gameObject, Vector3.zero, Vector3.zero, Vector3.one);
@@ -309,38 +313,33 @@ namespace ZyGame.Dressup
                     });
                 }
 
+
                 if (!components.TryGetValue(dressupData.element, out DressupComponent component))
                 {
                     components.Add(dressupData.element, component = new DressupComponent(this));
-                }
-
-                if (!groupOptions.IsChild(dressupData.element))
-                {
                     group.elements.Add(dressupData.element);
-                    component.SetChild(group.gameObject);
-                }
-                else
-                {
-                    string[] pathList = groupOptions.GetChildPath(dressupData.element);
-                    List<GameObject> children = new List<GameObject>();
-                    foreach (var VARIABLE in pathList)
+                    if (!groupOptions.IsChild(dressupData.element))
                     {
-                        Transform transform = group.gameObject.transform.Find(VARIABLE);
-                        if (transform == null)
+                        component.SetChild(group.gameObject);
+                    }
+                    else
+                    {
+                        string[] pathList = groupOptions.GetChildPath(dressupData.element);
+                        List<GameObject> children = new List<GameObject>();
+                        foreach (var VARIABLE in pathList)
                         {
-                            Debug.Log(group.name + " Not children gameobject:" + VARIABLE);
-                            continue;
+                            Transform transform = group.gameObject.transform.Find(VARIABLE);
+                            if (transform == null)
+                            {
+                                Debug.Log(group.name + " Not children gameobject:" + VARIABLE);
+                                continue;
+                            }
+
+                            children.Add(transform.gameObject);
                         }
 
-                        children.Add(transform.gameObject);
+                        component.SetChild(children.ToArray());
                     }
-
-                    component.SetChild(children.ToArray());
-                }
-
-                if (component is null)
-                {
-                    continue;
                 }
 
                 if (component.data is null || component.data.texture.Equals(dressupData.texture) is false)
