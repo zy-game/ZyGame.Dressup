@@ -25,7 +25,7 @@ namespace ZyGame.Editor.Avatar
             DressupEditorOptions.Save();
         }
     }
-    
+
     [Serializable]
     public class ChildOptions
     {
@@ -40,6 +40,11 @@ namespace ZyGame.Editor.Avatar
         [Header("部件模型")] public Object target;
         [Header("部件图标")] public Texture2D icon;
         [Header("子部件列表")] public List<ChildOptions> childs;
+
+        public bool HaveChild(Element element)
+        {
+            return childs is not null && childs.Find(x => x.element == element) != null;
+        }
     }
 
     [Serializable]

@@ -339,19 +339,16 @@ namespace ZyGame.Editor.Avatar
                             DressupEditorOptions.Save();
                         }
 
-                        if (temp >= 0)
+                        GroupOptions groupOptions = DressupEditorOptions.instance.options.Find(x => x.name == dressup.group);
+                        List<ElementOptions> elements = groupOptions.elements.Where(x => x.element == dressup.element || x.HaveChild(dressup.element)).ToList();
+                        string[] eles = elements.Select(x => x.target.name).ToArray();
+                        int bIndex = elements.FindIndex(x => x.target == dressup.bind.target);
+                        GUILayout.Label("绑定模型：", GUILayout.Width(50));
+                        int temp2 = EditorGUILayout.Popup(bIndex, eles, EditorStyles.toolbarDropDown);
+                        if (temp2 != bIndex)
                         {
-                            GroupOptions groupOptions = DressupEditorOptions.instance.options.Find(x => x.name == dressup.group);
-                            List<ElementOptions> elements = groupOptions.elements.Where(x => x.element == dressup.element).ToList();
-                            string[] eles = elements.Select(x => x.target.name).ToArray();
-                            int bIndex = elements.FindIndex(x => x.target == dressup.bind.target);
-                            GUILayout.Label("绑定模型：", GUILayout.Width(50));
-                            int temp2 = EditorGUILayout.Popup(bIndex, eles, EditorStyles.toolbarDropDown);
-                            if (temp2 != bIndex)
-                            {
-                                dressup.bind = elements[temp2];
-                                DressupEditorOptions.Save();
-                            }
+                            dressup.bind = elements[temp2];
+                            DressupEditorOptions.Save();
                         }
 
 
