@@ -298,7 +298,7 @@ namespace ZyGame.Drawing
                 return;
             }
 
-            layers.Insert(0, new DrawingData(original.width, original.height, name));
+            layers.Add(new DrawingData(original.width, original.height, name));
             SelectionLayer(name);
             current.texture.Clear();
             Apply();
@@ -320,7 +320,7 @@ namespace ZyGame.Drawing
             }
 
             current = layer;
-            // CameraCtrl.instance.LockControllerType(ControllerState.Pen);
+            _dressupManager.EventNotify.Notify(EventNames.SELETE_LAYER_COMPLETED, name);
         }
 
         /// <summary>
@@ -332,6 +332,12 @@ namespace ZyGame.Drawing
             EnsureSelectionLayer();
             if (!layers.Contains(current))
             {
+                return;
+            }
+
+            if (layers.Count == 1)
+            {
+                _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.CannotDeleteDefaultLayer);
                 return;
             }
 

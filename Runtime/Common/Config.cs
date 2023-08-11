@@ -5,8 +5,6 @@ using Object = UnityEngine.Object;
 
 namespace ZyGame.Dressup
 {
-    
-
     /// <summary>
     /// 部位枚举
     /// </summary>
@@ -265,6 +263,11 @@ namespace ZyGame.Dressup
         public const string CREATE_LAYER_COMPLETED = "CREATE_LAYER_COMPLETED";
 
         /// <summary>
+        /// 选择图层成功
+        /// </summary>
+        public const string SELETE_LAYER_COMPLETED = "SELETE_LAYER_COMPLETED";
+
+        /// <summary>
         /// 开始涂鸦
         /// </summary>
         public const string GRAFFITI_INITIALIZED_COMPLETED = "GRAFFITI_INITIALIZED_COMPLETED";
@@ -332,5 +335,6 @@ namespace ZyGame.Dressup
         public const string LOAD_FILE_FAIL = "load file fail:{0}";
         public const string IMPORT_AVATAR_CONFIG_FAIL = "import avatar config fail:{0}";
         public const string Please_set_the_model_first_before_setting_the_map = "Please set the model first before setting the map{0}";
+        public const string CannotDeleteDefaultLayer = "CannotDeleteDefaultLayer";
     }
 }
