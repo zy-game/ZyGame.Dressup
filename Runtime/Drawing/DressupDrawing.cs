@@ -65,7 +65,6 @@ namespace ZyGame.Drawing
         public List<DrawingData> layers { get; set; } = new List<DrawingData>();
 
         private Vector3 last_mouse_position = Vector3.zero;
-        private Action<string, object> Notify => _dressupManager.Notify;
         public string id { get; set; }
 
         /// <summary>
@@ -89,7 +88,7 @@ namespace ZyGame.Drawing
         {
             if (_dressupManager.HaveDressup(element) is false)
             {
-                _dressupManager.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_FIND_THE_ELEMENT_DATA + " With Initialized");
+                _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_FIND_THE_ELEMENT_DATA + " With Initialized");
                 return;
             }
 
@@ -142,7 +141,7 @@ namespace ZyGame.Drawing
                 return;
             }
 
-            _dressupManager.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_INITIALIZED_DRAWING);
+            _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_INITIALIZED_DRAWING);
         }
 
         private void EnsureSelectionLayer()
@@ -181,7 +180,7 @@ namespace ZyGame.Drawing
             changed = Changed.Saved;
             if (name.IsNullOrEmpty())
             {
-                Notify(EventNames.SAVED_GRAFFITI_DATA_COMPLETED, string.Empty);
+                _dressupManager.EventNotify.Notify(EventNames.SAVED_GRAFFITI_DATA_COMPLETED, string.Empty);
                 return;
             }
 
@@ -202,12 +201,12 @@ namespace ZyGame.Drawing
             {
                 if (args == null)
                 {
-                    Notify(EventNames.SAVED_GRAFFITI_DATA_COMPLETED, string.Empty);
+                    _dressupManager.EventNotify.Notify(EventNames.SAVED_GRAFFITI_DATA_COMPLETED, string.Empty);
                     return;
                 }
 
                 changed = Changed.Saved;
-                Notify(EventNames.SAVED_GRAFFITI_DATA_COMPLETED, Newtonsoft.Json.JsonConvert.SerializeObject(args));
+                _dressupManager.EventNotify.Notify(EventNames.SAVED_GRAFFITI_DATA_COMPLETED, Newtonsoft.Json.JsonConvert.SerializeObject(args));
             });
             Debug.Log("通知保存完成" + name);
         }
@@ -230,11 +229,11 @@ namespace ZyGame.Drawing
             {
                 if (args == null)
                 {
-                    Notify(EventNames.PUBLISHING_GRAFFITI_COMPLETED, string.Empty);
+                    _dressupManager.EventNotify.Notify(EventNames.PUBLISHING_GRAFFITI_COMPLETED, string.Empty);
                     return;
                 }
 
-                Notify(EventNames.PUBLISHING_GRAFFITI_COMPLETED, Newtonsoft.Json.JsonConvert.SerializeObject(args));
+                _dressupManager.EventNotify.Notify(EventNames.PUBLISHING_GRAFFITI_COMPLETED, Newtonsoft.Json.JsonConvert.SerializeObject(args));
             });
         }
 
@@ -274,15 +273,15 @@ namespace ZyGame.Drawing
         public void ImportGraffitiTexture()
         {
             this.EnsureInitializedGraffiti();
-            _dressupManager.LoadFileCompeltion += Runnable_OpenFileComplated;
+            _dressupManager.EventNotify.Register(EventNames.OPEN_FILE_COMPLATED, Runnable_OpenFileComplated);
             _dressupManager.OpenFileCallback();
 
-            void Runnable_OpenFileComplated(byte[] args)
+            void Runnable_OpenFileComplated(object args)
             {
                 EnsureSelectionLayer();
-                current.Import(args);
+                current.Import((byte[])args);
                 Apply();
-                Notify(EventNames.IMPORT_GRAFFITI_TEXTURE_COMPLETED, default);
+                _dressupManager.EventNotify.Notify(EventNames.IMPORT_GRAFFITI_TEXTURE_COMPLETED, default);
             }
         }
 
@@ -295,7 +294,7 @@ namespace ZyGame.Drawing
             this.EnsureInitializedGraffiti();
             if (layers.Count >= 5)
             {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.LAYER_OUT_LIMIT_COUNT);
+                _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.LAYER_OUT_LIMIT_COUNT);
                 return;
             }
 
@@ -303,7 +302,7 @@ namespace ZyGame.Drawing
             SelectionLayer(name);
             current.texture.Clear();
             Apply();
-            Notify(EventNames.CREATE_LAYER_COMPLETED, current.name);
+            _dressupManager.EventNotify.Notify(EventNames.CREATE_LAYER_COMPLETED, current.name);
         }
 
         /// <summary>
@@ -316,7 +315,7 @@ namespace ZyGame.Drawing
             DrawingData layer = layers.Find(x => x.name == name);
             if (layer == null)
             {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_TATH_LAYER, name));
+                _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_TATH_LAYER, name));
                 return;
             }
 
@@ -340,7 +339,7 @@ namespace ZyGame.Drawing
             layers.Remove(current);
             current = layers.LastOrDefault();
             Apply();
-            Notify(EventNames.DELETE_LAYER_COMPLETED, name);
+            _dressupManager.EventNotify.Notify(EventNames.DELETE_LAYER_COMPLETED, name);
         }
 
         /// <summary>
@@ -393,20 +392,20 @@ namespace ZyGame.Drawing
             this.EnsureInitializedGraffiti();
             if (current == null)
             {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_FIND_TATH_LAYER);
+                _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.NOT_FIND_TATH_LAYER);
                 return;
             }
 
             if (index < 0 || index >= layers.Count)
             {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, "ArgumentOutOfRangeException");
+                _dressupManager.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, "ArgumentOutOfRangeException");
                 return;
             }
 
             layers.Remove(current);
             layers.Insert(index, current);
             Apply();
-            Notify(EventNames.SORT_LAYER_SUCCESSFLY, "");
+            _dressupManager.EventNotify.Notify(EventNames.SORT_LAYER_SUCCESSFLY, "");
         }
 
 

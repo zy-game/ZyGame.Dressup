@@ -106,7 +106,7 @@ namespace ZyGame.Dressup
                  {
                      if (args == null)
                      {
-                         dressup.Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_THE_ELEMENT_ASSET, temp.texture) + 4);
+                         dressup.EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_THE_ELEMENT_ASSET, temp.texture) + 4);
                          return;
                      }
     

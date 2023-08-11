@@ -10,59 +10,11 @@ using Object = UnityEngine.Object;
 
 namespace ZyGame.Dressup
 {
-    public class DressupOptions
+    public interface IEventNotify
     {
-        /// <summary>
-        /// 服务器地址
-        /// </summary>
-        public string address;
-
-        /// <summary>
-        /// 资源组
-        /// </summary>
-        public string group;
-
-        /// <summary>
-        /// 骨架版本
-        /// </summary>
-        public uint version;
-
-        /// <summary>
-        /// 初始骨架
-        /// </summary>
-        public string skeleton;
-
-        /// <summary>
-        /// 骨架crc
-        /// </summary>
-        public uint crc;
-
-        /// <summary>
-        /// UID
-        /// </summary>
-        public string userId;
-
-        /// <summary>
-        /// 模型质量
-        /// </summary>
-        public string quality;
-
-        /// <summary>
-        /// 项目ID
-        /// </summary>
-        public int pid;
-
-
-        [NonSerialized] public Camera camera;
-        [NonSerialized] public List<Element> normals;
-
-        [NonSerialized] public Vector3 cameraPosition;
-
-        // [NonSerialized] public List<NodeData> nodeList;
-        [NonSerialized] public Action OpenFileCallback;
-        [NonSerialized] public IAssetLoader assetLoader;
-        [NonSerialized] public Action<string, object> Notify;
-        [NonSerialized] public List<GroupInfo> groupDatas;
+        void Notify(string evtName, object evtData = null);
+        void Register(string evtName, Action<object> action, bool isOnce = true);
+        void Unregister(string evtName, Action<object> action);
     }
 
     public class DressupManager : IDisposable
@@ -81,12 +33,12 @@ namespace ZyGame.Dressup
         public List<GroupInfo> groupDatas { get; private set; }
         public IAssetLoader AssetLoader { get; private set; }
 
-        public Action<string, object> Notify { get; private set; }
+        public IEventNotify EventNotify { get; private set; }
+        // public Action<string, object> Notify { get; private set; }
 
         // public Dictionary<Element, DressupComponent> components { get; }
         private List<DressGroup> basicList { get; set; }
         public Action OpenFileCallback { get; private set; }
-        public Action<byte[]> LoadFileCompeltion { get; set; }
         public GroupInfo groupOptions { get; private set; }
 
         private Dictionary<Element, DressupData> dataList = new Dictionary<Element, DressupData>();
@@ -107,8 +59,8 @@ namespace ZyGame.Dressup
             this.user = options.userId;
             this.group = options.group;
             this.camera = options.camera;
-            this.Notify = options.Notify;
             this.address = options.address;
+            this.EventNotify = options.Notify;
             this.normalList = options.normals;
             this.groupDatas = options.groupDatas;
             this.AssetLoader = options.assetLoader;
@@ -123,7 +75,7 @@ namespace ZyGame.Dressup
         {
             if (result is null)
             {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
+                EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.INITIALIZE_AVATAR_ERROR_NOT_FIND_THE_SKELETON);
             }
 
             gameObject = result;
@@ -135,7 +87,7 @@ namespace ZyGame.Dressup
                 this.camera.transform.position = options.cameraPosition;
             }
 
-            Notify(EventNames.INITIALIZED_COMPLATED_EVENT, string.Empty);
+            EventNotify.Notify(EventNames.INITIALIZED_COMPLATED_EVENT, string.Empty);
         }
 
         public bool HaveDressup(Element element)
@@ -311,7 +263,7 @@ namespace ZyGame.Dressup
                 if (ex != null)
                 {
                     Debug.LogError(ex);
-                    Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.UPLOAD_AVATAR_ICON_FAIL);
+                    EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.UPLOAD_AVATAR_ICON_FAIL);
                     return;
                 }
 
@@ -330,7 +282,7 @@ namespace ZyGame.Dressup
                 }
 
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(config);
-                Notify(EventNames.EXPORT_AVATAR_CONFIG_COMPLATED, json);
+                EventNotify.Notify(EventNames.EXPORT_AVATAR_CONFIG_COMPLATED, json);
             }).StartCoroutine();
         }
 
@@ -349,7 +301,7 @@ namespace ZyGame.Dressup
         {
             if (config.IsNullOrEmpty())
             {
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.CONFIG_DATA_IS_NULL_OR_EMPTY);
+                EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.CONFIG_DATA_IS_NULL_OR_EMPTY);
                 return;
             }
 
@@ -358,17 +310,17 @@ namespace ZyGame.Dressup
                 DressupConfig tempConfig = Newtonsoft.Json.JsonConvert.DeserializeObject<DressupConfig>(config);
                 if (tempConfig.group.IsNullOrEmpty() || tempConfig.group != group)
                 {
-                    Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.ELEMENT_GROUP_NOT_THE_SAME);
+                    EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, ErrorInfo.ELEMENT_GROUP_NOT_THE_SAME);
                     return;
                 }
 
                 ClearElement(Element.None);
-                SetElementData(tempConfig.items, () => Notify(EventNames.IMPORT_CONFIG_COMPLATED, default(object)));
+                SetElementData(tempConfig.items, () => EventNotify.Notify(EventNames.IMPORT_CONFIG_COMPLATED, default(object)));
             }
             catch (Exception e)
             {
                 Debug.LogException(e);
-                Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.IMPORT_AVATAR_CONFIG_FAIL, e.ToString()));
+                EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.IMPORT_AVATAR_CONFIG_FAIL, e.ToString()));
             }
         }
 
@@ -383,7 +335,7 @@ namespace ZyGame.Dressup
 
                 dataList.Clear();
                 basicList.Clear();
-                Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
+                EventNotify.Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
                 return;
             }
 
@@ -404,7 +356,7 @@ namespace ZyGame.Dressup
             }
 
             dataList.Remove(element);
-            Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
+            EventNotify.Notify(EventNames.CLEAR_ELMENT_DATA_COMPLATED, element);
         }
 
         private bool isRunning = false;
@@ -502,7 +454,7 @@ namespace ZyGame.Dressup
             ShowInView(Element.None);
             isRunning = false;
             task.callback?.Invoke();
-            Notify(EventNames.SET_ELEMENT_DATA_COMPLATED, default(object));
+            EventNotify.Notify(EventNames.SET_ELEMENT_DATA_COMPLATED, default(object));
             SetElementDataTask().StartCoroutine();
         }
 
@@ -551,7 +503,7 @@ namespace ZyGame.Dressup
                 {
                     if (args == null)
                     {
-                        Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_THE_ELEMENT_ASSET, temp.texture) + 4);
+                        EventNotify.Notify(EventNames.ERROR_MESSAGE_NOTICE, string.Format(ErrorInfo.NOT_FIND_THE_ELEMENT_ASSET, temp.texture) + 4);
                         return;
                     }
 
@@ -665,10 +617,9 @@ namespace ZyGame.Dressup
 
         public void UploadAsset(Element element)
         {
-            void Runnable_OpenFileComplated(byte[] bytes)
+            void Runnable_OpenFileComplated(object args)
             {
-                LoadFileCompeltion -= Runnable_OpenFileComplated;
-
+                byte[] bytes = (byte[])args;
                 if (!this.dataList.TryGetValue(element, out DressupData component))
                 {
                     return;
@@ -681,24 +632,24 @@ namespace ZyGame.Dressup
                 {
                     if (args == null)
                     {
-                        Notify(EventNames.UPLOAD_ELEMENT_ASSET_COMPLATED, string.Empty);
+                        EventNotify.Notify(EventNames.UPLOAD_ELEMENT_ASSET_COMPLATED, string.Empty);
                         return;
                     }
 
-                    Notify(EventNames.UPLOAD_ELEMENT_ASSET_COMPLATED, Newtonsoft.Json.JsonConvert.SerializeObject(args));
+                    EventNotify.Notify(EventNames.UPLOAD_ELEMENT_ASSET_COMPLATED, Newtonsoft.Json.JsonConvert.SerializeObject(args));
                 });
             }
 
-            LoadFileCompeltion += Runnable_OpenFileComplated;
+            EventNotify.Register(EventNames.OPEN_FILE_COMPLATED, Runnable_OpenFileComplated);
             OpenFileCallback();
         }
 
 
         public void PreviewAsset(Element element)
         {
-            void Runnable_OpenFileComplated(byte[] bytes)
+            void Runnable_OpenFileComplated(object args)
             {
-                LoadFileCompeltion -= Runnable_OpenFileComplated;
+                byte[] bytes = (byte[])args;
                 if (bytes == null || bytes.Length == 0)
                 {
                     return;
@@ -715,7 +666,7 @@ namespace ZyGame.Dressup
                 ShowInView(element);
             }
 
-            LoadFileCompeltion += Runnable_OpenFileComplated;
+            EventNotify.Register(EventNames.OPEN_FILE_COMPLATED, Runnable_OpenFileComplated);
             OpenFileCallback();
         }
 

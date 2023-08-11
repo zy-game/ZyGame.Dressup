@@ -465,7 +465,7 @@ namespace ZyGame.Editor.Avatar
                 for (int i = 0; i < DressupEditorOptions.instance.options.Count; i++)
                 {
                     GroupOptions options = DressupEditorOptions.instance.options[i];
-                    string bundleName = $"{GetAssetPath(options.skeleton)}";
+                    string bundleName = $"{GetAssetPath(options.skeleton)}.assetbundle";
                     string targetPath = String.Empty;
                     if (File.Exists($"{output}/{bundleName}"))
                     {
@@ -490,7 +490,7 @@ namespace ZyGame.Editor.Avatar
 
                     foreach (var VARIABLE in options.elements)
                     {
-                        bundleName = $"{GetAssetPath(VARIABLE.target)}";
+                        bundleName = $"{GetAssetPath(VARIABLE.target)}.assetbundle";
                         targetPath = $"{Application.dataPath}/../output/{options.name}/bundles/{bundleName}";
                         if (Directory.Exists(Path.GetDirectoryName(targetPath)) is false)
                         {
@@ -585,7 +585,7 @@ namespace ZyGame.Editor.Avatar
                     is_normal = DressupEditorOptions.instance.normals.Contains(optionsData.element),
                     element = (int)optionsData.element,
                     group = optionsData.group,
-                    model = $"{optionsData.group}/bundles/{GetAssetPath(optionsData.bind.target)}",
+                    model = $"{optionsData.group}/bundles/{GetAssetPath(optionsData.bind.target)}.assetbundle",
                     texture = optionsData.texture == null ? string.Empty : $"{optionsData.group}/element/{GetAssetPath(optionsData.texture)}.png",
                     version = 0,
                     crc = 0
@@ -650,7 +650,7 @@ namespace ZyGame.Editor.Avatar
                 this.target = target;
                 build = new AssetBundleBuild()
                 {
-                    assetBundleName = GetAssetPath(this.target),
+                    assetBundleName = GetAssetPath(this.target) + ".assetbundle",
                     assetNames = new[] { AssetDatabase.GetAssetPath(this.target) }
                 };
             }
